@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户中心 - 一碗小米周授权登录平台</title>
+    <link rel="stylesheet" href="https://fa.2hs.cn/pro/7.0.0/css/all.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="css/user.css">
+</head>
+<body>
+    <!-- 顶部导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+                <span>一碗小米周授权登录平台</span>
+            </div>
+            <div class="nav-right">
+                <div class="user-info">
+                    <img src="" alt="头像" class="user-avatar" id="nav-avatar">
+                    <span class="user-name" id="nav-username">加载中...</span>
+                </div>
+                <!-- 管理员入口按钮 -->
+                <a href="/admin/" class="btn-admin" id="btn-admin" style="display: none;">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>管理后台</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <div class="main-container">
+        <!-- 左侧导航栏 -->
+        <aside class="sidebar">
+            <nav class="sidebar-nav">
+                <a href="#overview" class="nav-item active" data-page="overview">
+                    <i class="fas fa-home"></i>
+                    <span>账户概览</span>
+                </a>
+                <a href="#profile" class="nav-item" data-page="profile">
+                    <i class="fas fa-user"></i>
+                    <span>账户信息</span>
+                </a>
+                <a href="#security" class="nav-item" data-page="security">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>账户安全</span>
+                </a>
+                <a href="#authorized" class="nav-item" data-page="authorized">
+                    <i class="fas fa-link"></i>
+                    <span>已授权网站</span>
+                </a>
+                <a href="#logs" class="nav-item" data-page="logs">
+                    <i class="fas fa-history"></i>
+                    <span>登录日志</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="btn-logout" id="btn-logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>退出登录</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- 右侧内容区 -->
+        <main class="content-area">
+            <!-- 账户概览 -->
+            <div class="page-content active" id="page-overview">
+                <div class="page-header">
+                    <h1>账户概览</h1>
+                    <p>查看您的账户基本信息和统计数据</p>
+                </div>
+
+                <div class="overview-grid">
+                    <!-- 用户卡片 -->
+                    <div class="card user-card">
+                        <div class="user-profile">
+                            <img src="" alt="头像" class="profile-avatar" id="profile-avatar">
+                            <div class="profile-info">
+                                <h2 class="profile-name" id="profile-name">加载中...</h2>
+                                <p class="profile-username" id="profile-username">@username</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 账户状态卡片 -->
+                    <div class="card stat-card status-card" id="status-card">
+                        <div class="stat-icon status-icon" id="status-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-status-text">正常</div>
+                            <div class="stat-label">账户状态</div>
+                        </div>
+                    </div>
+
+                    <!-- 统计卡片 -->
+                    <div class="card stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-link"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-authorized">-</div>
+                            <div class="stat-label">已授权网站</div>
+                        </div>
+                    </div>
+
+                    <div class="card stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-register-time">-</div>
+                            <div class="stat-label">注册时间</div>
+                        </div>
+                    </div>
+
+                    <div class="card stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-register-ip">-</div>
+                            <div class="stat-label">注册IP</div>
+                        </div>
+                    </div>
+
+                    <div class="card stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-last-login">-</div>
+                            <div class="stat-label">最后登录</div>
+                        </div>
+                    </div>
+
+                    <div class="card stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-globe"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-last-ip">-</div>
+                            <div class="stat-label">最后登录IP</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 账户信息 -->
+            <div class="page-content" id="page-profile">
+                <div class="page-header">
+                    <h1>账户信息</h1>
+                    <p>管理您的个人资料</p>
+                </div>
+
+                <!-- 个人资料卡片 -->
+<div class="profile-main-card">
+                    <div class="profile-cover"></div>
+                    <div class="profile-content">
+                        <div class="profile-avatar-wrapper">
+                            <img src="" alt="头像" class="profile-main-avatar" id="info-avatar">
+                            <div class="avatar-overlay" id="avatar-overlay">
+                                <i class="fas fa-camera"></i>
+                                <span>更换头像</span>
+                            </div>
+                        </div>
+                        <div class="profile-info-section">
+                            <div class="profile-name-row">
+                                <h2 class="profile-display-name" id="info-display-name">加载中...</h2>
+                                <!-- 昵称审核状态小标签 -->
+                                <span class="review-badge" id="nickname-pending-badge" style="display: none;" title="昵称正在审核中">
+                                    <i class="fas fa-clock"></i> 审核中
+                                </span>
+                                <button class="btn-edit-nickname" id="btn-edit-nickname">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                            <p class="profile-username-text">@<span id="info-username">username</span></p>
+                            <div class="profile-badges">
+                                <span class="status-badge" id="info-status">正常</span>
+                                <span class="type-badge" id="info-user-type">普通用户</span>
+                                <!-- 头像审核状态小标签 -->
+                                <span class="review-badge" id="avatar-pending-badge" style="display: none;" title="头像正在审核中">
+                                    <i class="fas fa-image"></i> 头像审核中
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 信息网格 -->
+                <div class="info-cards-grid">
+                    <!-- 联系方式卡片 -->
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <i class="fas fa-address-book"></i>
+                            <h3>联系方式</h3>
+                        </div>
+                        <div class="info-card-body">
+                            <div class="info-item-modern">
+                                <div class="info-icon">
+                                    <i class="fas fa-mobile-alt"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">手机号</div>
+                                    <div class="info-text" id="info-phone">未绑定</div>
+                                </div>
+                            </div>
+                            <div class="info-item-modern">
+                                <div class="info-icon">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">邮箱地址</div>
+                                    <div class="info-text" id="info-email">未绑定</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 个人资料卡片 -->
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <i class="fas fa-user-circle"></i>
+                            <h3>个人资料</h3>
+                        </div>
+                        <div class="info-card-body">
+                            <div class="info-item-modern">
+                                <div class="info-icon">
+                                    <i class="fas fa-venus-mars"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">性别</div>
+                                    <div class="info-text" id="info-gender">未设置</div>
+                                </div>
+                            </div>
+                            <div class="info-item-modern">
+                                <div class="info-icon">
+                                    <i class="fas fa-birthday-cake"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">生日</div>
+                                    <div class="info-text" id="info-birth-date">未设置</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 注册信息卡片 -->
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <i class="fas fa-user-plus"></i>
+                            <h3>注册信息</h3>
+                        </div>
+                        <div class="info-card-body">
+                            <div class="info-item-modern">
+                                <div class="info-icon">
+                                    <i class="fas fa-calendar-check"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">注册时间</div>
+                                    <div class="info-text" id="info-created-at">-</div>
+                                </div>
+                            </div>
+                            <div class="info-item-modern">
+                                <div class="info-icon">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">注册IP</div>
+                                    <div class="info-text" id="info-register-ip">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 登录信息卡片 -->
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <h3>登录信息</h3>
+                        </div>
+                        <div class="info-card-body">
+                            <div class="info-item-modern">
+                                <div class="info-icon">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">最后登录</div>
+                                    <div class="info-text" id="info-last-login">-</div>
+                                </div>
+                            </div>
+                            <div class="info-item-modern">
+                                <div class="info-icon">
+                                    <i class="fas fa-globe"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">登录IP</div>
+                                    <div class="info-text" id="info-last-ip">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 账户安全 -->
+            <div class="page-content" id="page-security">
+                <div class="page-header">
+                    <h1>账户安全</h1>
+                    <p>管理您的密码和安全设置</p>
+                </div>
+
+                <!-- 基本安全信息 -->
+                <div class="info-cards-grid">
+                    <!-- 联系方式卡片 -->
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <i class="fas fa-address-book"></i>
+                            <h3>联系方式</h3>
+                        </div>
+                        <div class="info-card-body">
+                            <div class="info-item-modern">
+                                <div class="info-icon">
+                                    <i class="fas fa-mobile-alt"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">手机号</div>
+                                    <div class="info-text" id="security-phone">未绑定</div>
+                                </div>
+                                <button class="btn-action-small" id="btn-bind-phone" style="display: none;">
+                                    <i class="fas fa-link"></i> 绑定
+                                </button>
+                            </div>
+                            <div class="info-item-modern">
+                                <div class="info-icon">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">邮箱地址</div>
+                                    <div class="info-text" id="security-email">未绑定</div>
+                                </div>
+                                <button class="btn-action-small" id="btn-bind-email" style="display: none;">
+                                    <i class="fas fa-link"></i> 绑定
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 密码安全卡片 -->
+                    <div class="info-card">
+                        <div class="info-card-header">
+                            <i class="fas fa-key"></i>
+                            <h3>密码安全</h3>
+                        </div>
+                        <div class="info-card-body">
+                            <div class="info-item-modern">
+                                <div class="info-icon">
+                                    <i class="fas fa-lock"></i>
+                                </div>
+                                <div class="info-content">
+                                    <div class="info-label">登录密码</div>
+                                    <div class="info-text">••••••••</div>
+                                </div>
+                                <button class="btn-action-small" id="btn-change-password">
+                                    <i class="fas fa-edit"></i> 修改
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 第三方账号绑定 -->
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header">
+                        <h3><i class="fas fa-link"></i> 第三方账号绑定</h3>
+                        <p class="card-subtitle">绑定第三方账号后，可以使用第三方账号快捷登录</p>
+                    </div>
+                    <div class="card-body">
+                        <!-- 加载中 -->
+                        <div id="third-party-loading" class="loading-container">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>加载中...</p>
+                        </div>
+
+                        <!-- 第三方账号列表 -->
+                        <div id="third-party-list" class="third-party-list" style="display: none;">
+                            <!-- QQ -->
+                            <div class="third-party-item">
+                                <div class="third-party-icon qq-icon">
+                                    <i class="fab fa-qq"></i>
+                                </div>
+                                <div class="third-party-info">
+                                    <div class="third-party-name">QQ</div>
+                                    <div class="third-party-status" id="qq-status">
+                                        <span class="status-text" id="qq-status-text">未绑定</span>
+                                        <div class="third-party-detail" id="qq-detail" style="display: none;">
+                                            <div class="bind-info">
+                                                <img src="" alt="QQ头像" class="bind-avatar" id="qq-avatar">
+                                                <div class="bind-text">
+                                                    <div class="bind-nickname" id="qq-nickname">-</div>
+                                                    <div class="bind-time">绑定时间：<span id="qq-bind-time">-</span></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="third-party-action">
+                                    <button class="btn-bind" id="btn-bind-qq" data-platform="qq">
+                                        <i class="fas fa-link"></i> 绑定
+                                    </button>
+                                    <button class="btn-unbind" id="btn-unbind-qq" data-platform="qq" style="display: none;">
+                                        <i class="fas fa-unlink"></i> 解绑
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 微信 -->
+                            <div class="third-party-item">
+                                <div class="third-party-icon wechat-icon">
+                                    <i class="fab fa-weixin"></i>
+                                </div>
+                                <div class="third-party-info">
+                                    <div class="third-party-name">微信</div>
+                                    <div class="third-party-status">
+                                        <span class="status-text" id="wechat-status-text">未绑定</span>
+                                        <div class="third-party-detail" id="wechat-detail" style="display: none;">
+                                            <div class="bind-info">
+                                                <img src="" alt="微信头像" class="bind-avatar" id="wechat-avatar">
+                                                <div class="bind-text">
+                                                    <div class="bind-nickname" id="wechat-nickname">-</div>
+                                                    <div class="bind-time">绑定时间：<span id="wechat-bind-time">-</span></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="third-party-action">
+                                    <button class="btn-bind" id="btn-bind-wechat" data-platform="wechat">
+                                        <i class="fas fa-link"></i> 绑定
+                                    </button>
+                                    <button class="btn-unbind" id="btn-unbind-wechat" data-platform="wechat" style="display: none;">
+                                        <i class="fas fa-unlink"></i> 解绑
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 微博 -->
+                            <div class="third-party-item">
+                                <div class="third-party-icon weibo-icon">
+                                    <i class="fab fa-weibo"></i>
+                                </div>
+                                <div class="third-party-info">
+                                    <div class="third-party-name">微博</div>
+                                    <div class="third-party-status">
+                                        <span class="status-text" id="weibo-status-text">未绑定</span>
+                                        <div class="third-party-detail" id="weibo-detail" style="display: none;">
+                                            <div class="bind-info">
+                                                <img src="" alt="微博头像" class="bind-avatar" id="weibo-avatar">
+                                                <div class="bind-text">
+                                                    <div class="bind-nickname" id="weibo-nickname">-</div>
+                                                    <div class="bind-time">绑定时间：<span id="weibo-bind-time">-</span></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="third-party-action">
+                                    <button class="btn-bind" id="btn-bind-weibo" data-platform="weibo">
+                                        <i class="fas fa-link"></i> 绑定
+                                    </button>
+                                    <button class="btn-unbind" id="btn-unbind-weibo" data-platform="weibo" style="display: none;">
+                                        <i class="fas fa-unlink"></i> 解绑
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- GitHub -->
+                            <div class="third-party-item">
+                                <div class="third-party-icon github-icon">
+                                    <i class="fab fa-github"></i>
+                                </div>
+                                <div class="third-party-info">
+                                    <div class="third-party-name">GitHub</div>
+                                    <div class="third-party-status">
+                                        <span class="status-text" id="github-status-text">未绑定</span>
+                                        <div class="third-party-detail" id="github-detail" style="display: none;">
+                                            <div class="bind-info">
+                                                <img src="" alt="GitHub头像" class="bind-avatar" id="github-avatar">
+                                                <div class="bind-text">
+                                                    <div class="bind-nickname" id="github-nickname">-</div>
+                                                    <div class="bind-time">绑定时间：<span id="github-bind-time">-</span></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="third-party-action">
+                                    <button class="btn-bind" id="btn-bind-github" data-platform="github">
+                                        <i class="fas fa-link"></i> 绑定
+                                    </button>
+                                    <button class="btn-unbind" id="btn-unbind-github" data-platform="github" style="display: none;">
+                                        <i class="fas fa-unlink"></i> 解绑
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 已授权网站 -->
+            <div class="page-content" id="page-authorized">
+                <div class="page-header">
+                    <h1>已授权网站</h1>
+                    <p>管理已授权访问您账户的第三方应用</p>
+                </div>
+
+                <!-- 加载中 -->
+                <div id="authorized-loading" class="loading-container">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>加载中...</p>
+                </div>
+
+                <!-- 空状态 -->
+                <div id="authorized-empty" class="empty-state" style="display: none;">
+                    <i class="fas fa-link"></i>
+                    <h3>暂无授权应用</h3>
+                    <p>您还没有授权任何第三方应用访问您的账户</p>
+                </div>
+
+                <!-- 应用列表 -->
+                <div id="authorized-list" class="authorized-apps-grid" style="display: none;">
+                    <!-- 应用卡片将通过 JavaScript 动态生成 -->
+                </div>
+            </div>
+
+            <!-- 登录日志 -->
+            <div class="page-content" id="page-logs">
+                <div class="page-header">
+                    <h1>登录日志</h1>
+                    <p>查看您的账户登录历史记录</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-body">
+                        <p class="text-muted">功能开发中...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast 容器 -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- 自定义弹出框 -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div id="modal-icon" class="modal-icon error">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <h3 id="modal-title">提示</h3>
+            </div>
+            <div class="modal-body">
+                <p id="modal-message">消息内容</p>
+            </div>
+            <div class="modal-footer">
+                <button id="modal-cancel" class="btn-cancel" style="display: none;">取消</button>
+                <button id="modal-confirm" class="btn-confirm">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 自定义输入弹出框 -->
+    <div id="input-modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-icon info">
+                    <i class="fas fa-edit"></i>
+                </div>
+                <h3 id="input-modal-title">编辑</h3>
+            </div>
+            <div class="modal-body">
+                <p id="input-modal-message">请输入内容</p>
+                <input type="text" id="input-modal-field" class="modal-input" placeholder="请输入...">
+            </div>
+            <div class="modal-footer">
+                <button id="input-modal-cancel" class="btn-cancel">取消</button>
+                <button id="input-modal-confirm" class="btn-confirm">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 头像上传弹出框 -->
+    <div id="upload-modal-overlay" class="modal-overlay">
+        <div class="modal-content upload-modal">
+            <div class="modal-header">
+                <div class="modal-icon info">
+                    <i class="fas fa-image"></i>
+                </div>
+                <h3>上传头像</h3>
+            </div>
+            <div class="modal-body">
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-icon">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <p class="upload-text">拖拽图片到此处，或点击选择文件</p>
+                    <p class="upload-hint">支持 JPG、PNG、GIF、WEBP 格式，最大 5MB</p>
+                    <input type="file" id="avatar-file-input" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" style="display: none;">
+                    <button class="btn-select-file" id="btn-select-file">选择文件</button>
+                </div>
+                <div class="upload-preview" id="upload-preview" style="display: none;">
+                    <img src="" alt="预览" id="preview-image">
+                    <button class="btn-remove-preview" id="btn-remove-preview">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="upload-progress" id="upload-progress" style="display: none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <p class="progress-text" id="progress-text">上传中... 0%</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="upload-modal-cancel" class="btn-cancel">取消</button>
+                <button id="upload-modal-confirm" class="btn-confirm">上传</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/user.js"></script>
+</body>
+</html>

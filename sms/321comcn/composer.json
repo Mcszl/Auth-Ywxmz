@@ -1,0 +1,21 @@
+{
+    "name": "ywxmz/auth-sms",
+    "description": "一碗小米周授权登录平台 - 短信服务模块",
+    "type": "library",
+    "require": {
+        "php": ">=7.2",
+        "alibabacloud/client": "^1.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Ywxmz\\Auth\\Sms\\": ""
+        }
+    },
+    "authors": [
+        {
+            "name": "一碗小米周",
+            "email": "support@ywxmz.com"
+        }
+    ],
+    "minimum-stability": "stable"
+}

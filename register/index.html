@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户注册 - 一碗小米周授权登录平台</title>
+    <link rel="stylesheet" href="https://fa.2hs.cn/pro/7.0.0/css/all.css">
+    <link rel="stylesheet" href="css/register.css">
+    <!-- 极验 SDK -->
+    <script src="https://static.geetest.com/v4/gt4.js"></script>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="logo">
+                <i class="fas fa-shield-alt"></i>
+                <span>一碗小米周授权登录平台</span>
+            </div>
+            <div class="nav-right">
+                <span class="nav-text">已有账号？</span>
+                <a href="../login" class="btn-login" id="login-link">立即登录</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <div class="register-container">
+            <div class="register-box">
+                <h1 class="register-title">欢迎注册</h1>
+                <p class="register-subtitle">请选择注册方式</p>
+
+                <!-- 注册方式切换 -->
+                <div class="register-tabs">
+                    <button class="tab-btn active" data-tab="phone">
+                        <i class="fas fa-mobile-alt"></i>
+                        手机号注册
+                    </button>
+                    <button class="tab-btn" data-tab="email">
+                        <i class="fas fa-envelope"></i>
+                        邮箱注册
+                    </button>
+                </div>
+
+                <!-- 手机号注册表单 -->
+                <form class="register-form active" id="phone-form">
+                    <div class="form-group">
+                        <label for="phone-username">
+                            <i class="fas fa-user"></i>
+                            账号
+                        </label>
+                        <input 
+                            type="text" 
+                            id="phone-username" 
+                            name="username" 
+                            placeholder="字母开头的4-12位英文或数字" 
+                            pattern="^[a-zA-Z][a-zA-Z0-9]{3,11}$"
+                            required>
+                        <small class="form-hint">账号必须以字母开头，4-12位英文或数字</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone-nickname">
+                            <i class="fas fa-id-card"></i>
+                            昵称
+                        </label>
+                        <input type="text" id="phone-nickname" name="nickname" placeholder="请输入昵称" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone-number">
+                            <i class="fas fa-mobile-alt"></i>
+                            手机号
+                        </label>
+                        <input type="tel" id="phone-number" name="phone" placeholder="请输入手机号" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone-code">
+                            <i class="fas fa-shield-alt"></i>
+                            验证码
+                        </label>
+                        <div class="code-input">
+                            <input type="text" id="phone-code" name="code" placeholder="请输入验证码" required>
+                            <button type="button" class="btn-code" data-target="phone-number" id="phone-send-code">获取验证码</button>
+                        </div>
+                    </div>
+
+                    <!-- 极验验证容器 -->
+                    <div id="geetest-captcha" style="margin-bottom: 1.25rem;"></div>
+
+                    <div class="form-group">
+                        <label for="phone-password">
+                            <i class="fas fa-lock"></i>
+                            密码
+                        </label>
+                        <div class="password-input">
+                            <input type="password" id="phone-password" name="password" placeholder="请输入密码" required>
+                            <button type="button" class="toggle-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone-confirm-password">
+                            <i class="fas fa-lock"></i>
+                            确认密码
+                        </label>
+                        <div class="password-input">
+                            <input type="password" id="phone-confirm-password" name="confirm_password" placeholder="请再次输入密码" required>
+                            <button type="button" class="toggle-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="agreement">
+                            <input type="checkbox" id="agree-phone" name="agree" required>
+                            <span>我已阅读并同意 <a href="../agreement/privacy.html" target="_blank">隐私政策</a> 和 <a href="../agreement/terms.html" target="_blank">服务条款</a></span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-register">注册</button>
+                </form>
+
+                <!-- 邮箱注册表单 -->
+                <form class="register-form" id="email-form">
+                    <div class="form-group">
+                        <label for="email-username">
+                            <i class="fas fa-user"></i>
+                            账号
+                        </label>
+                        <input 
+                            type="text" 
+                            id="email-username" 
+                            name="username" 
+                            placeholder="字母开头的4-12位英文或数字" 
+                            pattern="^[a-zA-Z][a-zA-Z0-9]{3,11}$"
+                            required>
+                        <small class="form-hint">账号必须以字母开头，4-12位英文或数字</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email-nickname">
+                            <i class="fas fa-id-card"></i>
+                            昵称
+                        </label>
+                        <input type="text" id="email-nickname" name="nickname" placeholder="请输入昵称" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email-address">
+                            <i class="fas fa-envelope"></i>
+                            邮箱
+                        </label>
+                        <input type="email" id="email-address" name="email" placeholder="请输入邮箱地址" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email-code">
+                            <i class="fas fa-shield-alt"></i>
+                            验证码
+                        </label>
+                        <div class="code-input">
+                            <input type="text" id="email-code" name="code" placeholder="请输入验证码" required>
+                            <button type="button" class="btn-code" data-target="email-address" id="email-send-code">获取验证码</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email-password">
+                            <i class="fas fa-lock"></i>
+                            密码
+                        </label>
+                        <div class="password-input">
+                            <input type="password" id="email-password" name="password" placeholder="请输入密码" required>
+                            <button type="button" class="toggle-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email-confirm-password">
+                            <i class="fas fa-lock"></i>
+                            确认密码
+                        </label>
+                        <div class="password-input">
+                            <input type="password" id="email-confirm-password" name="confirm_password" placeholder="请再次输入密码" required>
+                            <button type="button" class="toggle-password">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="agreement">
+                            <input type="checkbox" id="agree-email" name="agree" required>
+                            <span>我已阅读并同意 <a href="../agreement/privacy.html" target="_blank">隐私政策</a> 和 <a href="../agreement/terms.html" target="_blank">服务条款</a></span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-register">注册</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部栏 -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="copyright">
+                © 2026 一碗小米周授权登录平台. All rights reserved.
+                <span style="margin: 0 10px;">|</span>
+                <a href="../agreement/privacy.html" target="_blank" style="color: inherit; text-decoration: none;">隐私政策</a>
+                <span style="margin: 0 10px;">|</span>
+                <a href="../agreement/terms.html" target="_blank" style="color: inherit; text-decoration: none;">服务条款</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 自定义弹出框 -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-icon" id="modal-icon">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <h3 class="modal-title" id="modal-title">提示</h3>
+            <p class="modal-message" id="modal-message">这是一条提示信息</p>
+            <div class="modal-buttons">
+                <button class="modal-btn primary" id="modal-confirm">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 提示容器 -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="js/register.js"></script>
+</body>
+</html>
