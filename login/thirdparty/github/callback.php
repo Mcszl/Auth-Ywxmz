@@ -113,9 +113,9 @@ try {
     }
     
     // 解析额外配置
-    $extraConfig = json_decode($config['extra_config'], true);
-    if (!$extraConfig) {
-        $extraConfig = [];
+    $extraConfig = [];
+    if (!empty($config['extra_config'])) {
+        $extraConfig = json_decode($config['extra_config'], true) ?: [];
     }
     
     // GitHub OAuth Token接口地址

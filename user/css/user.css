@@ -1389,6 +1389,10 @@ body {
     background: linear-gradient(135deg, #333 0%, #000 100%);
 }
 
+.google-icon {
+    background: linear-gradient(135deg, #4285f4 0%, #3367d6 100%);
+}
+
 .third-party-info {
     flex: 1;
 }

@@ -14,6 +14,9 @@ function init() {
     // 获取 URL 参数
     urlParams = new URLSearchParams(window.location.search);
     
+    // 验证应用配置（如果没有 app_id，则加载默认配置）
+    verifyAppConfig();
+    
     // 更新登录链接，保留参数
     updateLoginLink();
     
@@ -39,6 +42,43 @@ function init() {
     initGeetest();
     
     // console.log('注册页面已加载');
+}
+
+/**
+ * 验证应用配置
+ * 如果没有传入 app_id，则加载用户中心默认配置
+ */
+async function verifyAppConfig() {
+    let appId = urlParams.get('app_id');
+    let callbackUrl = urlParams.get('callback_url');
+    let permissions = urlParams.get('permissions');
+    
+    // 如果没有传入 app_id，则加载用户中心配置
+    if (!appId) {
+        try {
+            const response = await fetch('/api/GetUserCenterConfig.php');
+            const result = await response.json();
+            
+            if (!result.success) {
+                console.error('获取用户中心配置失败:', result.message);
+                return;
+            }
+            
+            // 使用用户中心配置
+            appId = result.data.app_id;
+            callbackUrl = result.data.callback_url;
+            permissions = result.data.permissions;
+            
+            // 更新 URL 参数
+            urlParams.set('app_id', appId);
+            urlParams.set('callback_url', callbackUrl);
+            urlParams.set('permissions', permissions);
+            
+            console.log('已加载用户中心默认配置:', result.data);
+        } catch (error) {
+            console.error('加载用户中心配置失败:', error);
+        }
+    }
 }
 
 /**

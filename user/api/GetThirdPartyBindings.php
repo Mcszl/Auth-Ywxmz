@@ -108,12 +108,30 @@ try {
     $stmt->execute(['user_uuid' => $userUuid]);
     $githubInfo = $stmt->fetch(PDO::FETCH_ASSOC);
     
+    // 查询 Google 绑定信息
+    $stmt = $pdo->prepare("
+        SELECT 
+            google_id,
+            google_email,
+            google_name,
+            google_avatar,
+            bind_status,
+            created_at,
+            updated_at
+        FROM auth.google_user_info
+        WHERE user_uuid = :user_uuid
+    ");
+    
+    $stmt->execute(['user_uuid' => $userUuid]);
+    $googleInfo = $stmt->fetch(PDO::FETCH_ASSOC);
+    
     // 构建返回数据
     $bindings = [
         'qq' => null,
         'wechat' => null,
         'weibo' => null,
-        'github' => null
+        'github' => null,
+        'google' => null
     ];
     
     if ($qqInfo && $qqInfo['bind_status'] == 1) {
@@ -179,6 +197,21 @@ try {
         ];
     }
     
+    if ($googleInfo && $googleInfo['bind_status'] == 1) {
+        $bindings['google'] = [
+            'bound' => true,
+            'name' => $googleInfo['google_name'],
+            'nickname' => $googleInfo['google_name'],
+            'avatar' => $googleInfo['google_avatar'],
+            'email' => $googleInfo['google_email'],
+            'bind_time' => $googleInfo['updated_at'] ?? $googleInfo['created_at']
+        ];
+    } else {
+        $bindings['google'] = [
+            'bound' => false
+        ];
+    }
+    
     // 记录日志
     $logger->log(
         'info',
@@ -189,7 +222,8 @@ try {
             'qq_bound' => $bindings['qq']['bound'],
             'wechat_bound' => $bindings['wechat']['bound'],
             'weibo_bound' => $bindings['weibo']['bound'],
-            'github_bound' => $bindings['github']['bound']
+            'github_bound' => $bindings['github']['bound'],
+            'google_bound' => $bindings['google']['bound']
         ]
     );
     

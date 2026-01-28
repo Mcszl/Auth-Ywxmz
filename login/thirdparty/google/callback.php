@@ -82,7 +82,11 @@ try {
         throw new Exception('Google登录配置未启用或不存在');
     }
     
-    $extraConfig = json_decode($config['extra_config'], true) ?: [];
+    // 解析额外配置
+    $extraConfig = [];
+    if (!empty($config['extra_config'])) {
+        $extraConfig = json_decode($config['extra_config'], true) ?: [];
+    }
     $tokenUrl = $extraConfig['token_url'] ?? 'https://oauth2.googleapis.com/token';
     
     // 获取Access Token

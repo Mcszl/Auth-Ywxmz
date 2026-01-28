@@ -65,9 +65,9 @@ try {
     }
     
     // 解析额外配置
-    $extraConfig = json_decode($config['extra_config'], true);
-    if (!$extraConfig) {
-        $extraConfig = [];
+    $extraConfig = [];
+    if (!empty($config['extra_config'])) {
+        $extraConfig = json_decode($config['extra_config'], true) ?: [];
     }
     
     // 微信开放平台授权地址

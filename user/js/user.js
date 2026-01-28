@@ -1228,6 +1228,9 @@ async function loadThirdPartyBindings() {
         // 更新 GitHub 绑定状态
         updateGithubBindingStatus(result.data.github);
         
+        // 更新 Google 绑定状态
+        updateGoogleBindingStatus(result.data.google);
+        
     } catch (error) {
         console.error('加载第三方绑定信息失败:', error);
         showError('网络错误，请稍后重试');
@@ -1759,6 +1762,137 @@ function unbindGithub() {
 }
 
 /**
+ * 更新 Google 绑定状态
+ */
+function updateGoogleBindingStatus(googleInfo) {
+    const statusText = document.getElementById('google-status-text');
+    const detailEl = document.getElementById('google-detail');
+    const bindBtn = document.getElementById('btn-bind-google');
+    const unbindBtn = document.getElementById('btn-unbind-google');
+    
+    if (googleInfo && googleInfo.bound) {
+        // 已绑定
+        if (statusText) {
+            statusText.textContent = '已绑定';
+            statusText.style.color = '#4caf50';
+        }
+        
+        // 显示详细信息
+        if (detailEl) {
+            detailEl.style.display = 'block';
+            
+            const avatar = document.getElementById('google-avatar');
+            const nickname = document.getElementById('google-nickname');
+            const bindTime = document.getElementById('google-bind-time');
+            
+            if (avatar) {
+                // 设置头像，如果没有则使用默认头像
+                avatar.src = googleInfo.avatar || 'https://avatar.ywxmz.com/user-6380868_1920.png';
+                // 添加错误处理，加载失败时使用默认头像
+                avatar.onerror = function() {
+                    this.src = 'https://avatar.ywxmz.com/user-6380868_1920.png';
+                };
+            }
+            if (nickname) nickname.textContent = googleInfo.nickname || googleInfo.name || '-';
+            if (bindTime) bindTime.textContent = formatDateTime(googleInfo.bind_time);
+        }
+        
+        // 显示解绑按钮，隐藏绑定按钮
+        if (bindBtn) bindBtn.style.display = 'none';
+        if (unbindBtn) unbindBtn.style.display = 'inline-flex';
+    } else {
+        // 未绑定
+        if (statusText) {
+            statusText.textContent = '未绑定';
+            statusText.style.color = '#999';
+        }
+        
+        // 隐藏详细信息
+        if (detailEl) {
+            detailEl.style.display = 'none';
+        }
+        
+        // 显示绑定按钮，隐藏解绑按钮
+        if (bindBtn) bindBtn.style.display = 'inline-flex';
+        if (unbindBtn) unbindBtn.style.display = 'none';
+    }
+}
+
+/**
+ * 绑定 Google
+ */
+async function bindGoogle() {
+    try {
+        const response = await fetch('api/BindGoogle.php', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            showError(result.message || '绑定失败');
+            return;
+        }
+        
+        // 跳转到 Google 授权页面
+        if (result.data && result.data.auth_url) {
+            window.location.href = result.data.auth_url;
+            return;
+        }
+        
+        // 绑定成功
+        showSuccessToast('Google 账号绑定成功', '绑定成功');
+        
+        // 重新加载绑定信息
+        setTimeout(() => {
+            loadThirdPartyBindings();
+        }, 1000);
+        
+    } catch (error) {
+        console.error('绑定 Google 失败:', error);
+        showError('网络错误，请稍后重试');
+    }
+}
+
+/**
+ * 解绑 Google
+ */
+function unbindGoogle() {
+    // 确认对话框
+    showConfirm(
+        '解绑后将无法使用 Google 账号快捷登录，确定要解绑吗？',
+        '确认解绑',
+        async function() {
+            try {
+                const response = await fetch('api/UnbindGoogle.php', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    showError(result.message || '解绑失败');
+                    return;
+                }
+                
+                showSuccessToast('Google 账号解绑成功', '解绑成功');
+                
+                // 重新加载绑定信息
+                setTimeout(() => {
+                    loadThirdPartyBindings();
+                }, 1000);
+                
+            } catch (error) {
+                console.error('解绑 Google 失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+    );
+}
+
+/**
  * 初始化账户安全页面
  */
 function initSecurityPage() {
@@ -1808,6 +1942,18 @@ function initSecurityPage() {
     const unbindGithubBtn = document.getElementById('btn-unbind-github');
     if (unbindGithubBtn) {
         unbindGithubBtn.addEventListener('click', unbindGithub);
+    }
+    
+    // 绑定 Google 按钮
+    const bindGoogleBtn = document.getElementById('btn-bind-google');
+    if (bindGoogleBtn) {
+        bindGoogleBtn.addEventListener('click', bindGoogle);
+    }
+    
+    // 解绑 Google 按钮
+    const unbindGoogleBtn = document.getElementById('btn-unbind-google');
+    if (unbindGoogleBtn) {
+        unbindGoogleBtn.addEventListener('click', unbindGoogle);
     }
     
     // 加载第三方绑定信息

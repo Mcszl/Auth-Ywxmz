@@ -5,7 +5,7 @@
  */
 
 // 抑制 PHP 8.x 的 deprecated 警告（来自第三方库）
-error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
+error_reporting(E_ALL & ~E_DEPRECATED);
 
 require_once __DIR__ . '/../config/postgresql.config.php';
 require_once __DIR__ . '/RateLimitService.php';

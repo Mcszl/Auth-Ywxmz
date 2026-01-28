@@ -177,9 +177,9 @@ try {
     }
     
     // 解析额外配置
-    $extraConfig = json_decode($config['extra_config'], true);
-    if (!$extraConfig) {
-        $extraConfig = [];
+    $extraConfig = [];
+    if (!empty($config['extra_config'])) {
+        $extraConfig = json_decode($config['extra_config'], true) ?: [];
     }
     
     // Google OAuth 2.0授权地址
@@ -205,9 +205,9 @@ try {
         'permissions' => $permissions
     ]);
     
-    // 处理scopes字段
+    // 处理scopes字段：如果是 JSON 数组，转换为空格分隔的字符串
     $scopes = $config['scopes'] ?? 'openid email profile';
-    if (is_string($scopes) && strpos($scopes, '[') === 0) {
+    if (is_string($scopes) && (strpos($scopes, '[') === 0 || strpos($scopes, '{') === 0)) {
         // 如果是JSON数组格式，解析并合并
         $scopesArray = json_decode($scopes, true);
         if (is_array($scopesArray)) {
