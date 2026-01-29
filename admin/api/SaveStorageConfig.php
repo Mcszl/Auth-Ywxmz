@@ -284,8 +284,8 @@ try {
  */
 function testS3Connection($endpoint, $region, $bucket, $accessKey, $secretKey, $usePathStyle) {
     try {
-        // 引入AWS SDK
-        require_once __DIR__ . '/../../storage/vendor/autoload.php';
+        // 引入AWS SDK（通过包装文件设置环境变量）
+        require_once __DIR__ . '/../../storage/aws_env_setup.php';
         
         // 如果region为空，使用默认值
         if (empty($region)) {
@@ -306,7 +306,9 @@ function testS3Connection($endpoint, $region, $bucket, $accessKey, $secretKey, $
             // 禁用SSL验证（某些自建对象存储可能使用自签名证书）
             'http' => [
                 'verify' => false
-            ]
+            ],
+            // 禁用从配置文件和环境变量加载凭证，避免 open_basedir 限制
+            'use_aws_shared_config_files' => false
         ];
         
         // 如果提供了自定义endpoint，添加到配置中

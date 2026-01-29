@@ -105,7 +105,7 @@ try {
         ':action' => $action,
         ':replacement' => $replacement,
         ':description' => $description,
-        ':created_by' => $user['username']
+        ':created_by' => $admin['username']
     ]);
     
     $result = $stmt->fetch(PDO::FETCH_ASSOC);

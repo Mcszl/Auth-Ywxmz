@@ -127,6 +127,22 @@ try {
     ");
     $userStatusDistribution = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
+    // 8. 待审核头像数量
+    $stmt = $pdo->query("
+        SELECT COUNT(*) as total 
+        FROM checks.avatar_check 
+        WHERE status = 0
+    ");
+    $pendingAvatars = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
+    // 9. 待审核昵称数量
+    $stmt = $pdo->query("
+        SELECT COUNT(*) as total 
+        FROM checks.nickname_check 
+        WHERE status = 0
+    ");
+    $pendingNicknames = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
+    
     // 记录日志
     $logger->info('admin', '管理员获取统计数据', [
         'admin' => $admin['username']
@@ -140,7 +156,9 @@ try {
         'total_apps' => intval($totalApps),
         'active_users' => intval($activeUsers),
         'user_type_distribution' => $userTypeDistribution,
-        'user_status_distribution' => $userStatusDistribution
+        'user_status_distribution' => $userStatusDistribution,
+        'pending_avatars' => intval($pendingAvatars),
+        'pending_nicknames' => intval($pendingNicknames)
     ], '获取成功');
     
 } catch (PDOException $e) {

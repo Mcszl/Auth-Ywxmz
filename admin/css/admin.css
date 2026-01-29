@@ -3636,3 +3636,99 @@ input[type="password"] + .btn-toggle-password,
 input[type="text"] + .btn-toggle-password {
     z-index: 10;
 }
+
+
+/* ============================================
+   登录日志样式
+   ============================================ */
+
+/* 用户信息单元格 */
+.user-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-avatar-small {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.user-avatar-placeholder {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+}
+
+.user-info-small {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.user-nickname {
+    font-weight: 500;
+    color: #333;
+}
+
+.user-username {
+    font-size: 12px;
+    color: #999;
+}
+
+/* 登录方式徽章 */
+.login-method-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    background: #f0f0f0;
+    border-radius: 12px;
+    font-size: 13px;
+    color: #666;
+}
+
+.login-method-badge i {
+    font-size: 12px;
+}
+
+/* Token 状态样式 */
+.status-used {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.status-active {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.status-expired {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.status-closed {
+    background: #ffebee;
+    color: #d32f2f;
+}
+
+.status-unknown {
+    background: #f5f5f5;
+    color: #757575;
+}
+
+/* 代码样式 */
+code {
+    padding: 2px 6px;
+    background: #f5f5f5;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #e91e63;
+}

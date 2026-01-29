@@ -476,6 +476,10 @@ function loadPageData(pageName) {
             initEmailLogFilters();
             loadEmailLogs();
             break;
+        case 'login-logs':
+            initLoginLogFilters();
+            loadLoginLogs();
+            break;
         // 其他页面...
     }
 }
@@ -1305,6 +1309,8 @@ async function loadOverviewStats() {
         document.getElementById('stat-today-register').textContent = stats.today_register || 0;
         document.getElementById('stat-today-login').textContent = stats.today_login || 0;
         document.getElementById('stat-total-apps').textContent = stats.total_apps || 0;
+        document.getElementById('stat-pending-avatars').textContent = stats.pending_avatars || 0;
+        document.getElementById('stat-pending-nicknames').textContent = stats.pending_nicknames || 0;
         
     } catch (error) {
         console.error('加载统计数据失败:', error);
@@ -10651,4 +10657,299 @@ function toggleThirdPartyLoginConfigPassword() {
         passwordIcon.classList.remove('fa-eye-slash');
         passwordIcon.classList.add('fa-eye');
     }
+}
+
+
+// ============================================
+// 登录日志管理
+// ============================================
+
+let currentLoginLogsPage = 1;
+let currentLoginLogsPageSize = 20;
+let currentLoginLogsSearch = '';
+let currentLoginMethod = '';
+let currentTokenStatus = '';
+let currentLoginDate = '';
+
+/**
+ * 初始化登录日志筛选器
+ */
+function initLoginLogFilters() {
+    // 搜索按钮
+    const searchBtn = document.getElementById('btn-login-logs-search');
+    const searchInput = document.getElementById('login-logs-search');
+    
+    if (searchBtn) {
+        searchBtn.addEventListener('click', function() {
+            currentLoginLogsSearch = searchInput.value.trim();
+            loadLoginLogs(1);
+        });
+    }
+    
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                currentLoginLogsSearch = this.value.trim();
+                loadLoginLogs(1);
+            }
+        });
+    }
+    
+    // 登录方式筛选
+    const loginMethodFilter = document.getElementById('filter-login-method');
+    if (loginMethodFilter) {
+        loginMethodFilter.addEventListener('change', function() {
+            currentLoginMethod = this.value;
+            loadLoginLogs(1);
+        });
+    }
+    
+    // Token状态筛选
+    const tokenStatusFilter = document.getElementById('filter-token-status');
+    if (tokenStatusFilter) {
+        tokenStatusFilter.addEventListener('change', function() {
+            currentTokenStatus = this.value;
+            loadLoginLogs(1);
+        });
+    }
+    
+    // 登录日期筛选
+    const loginDateFilter = document.getElementById('filter-login-date');
+    if (loginDateFilter) {
+        loginDateFilter.addEventListener('change', function() {
+            currentLoginDate = this.value;
+            loadLoginLogs(1);
+        });
+    }
+    
+    // 重置按钮
+    const resetBtn = document.getElementById('btn-reset-login-logs-filter');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            currentLoginLogsSearch = '';
+            currentLoginMethod = '';
+            currentTokenStatus = '';
+            currentLoginDate = '';
+            
+            if (searchInput) searchInput.value = '';
+            if (loginMethodFilter) loginMethodFilter.value = '';
+            if (tokenStatusFilter) tokenStatusFilter.value = '';
+            if (loginDateFilter) loginDateFilter.value = '';
+            
+            loadLoginLogs(1);
+        });
+    }
+}
+
+/**
+ * 加载登录日志列表
+ */
+async function loadLoginLogs(page = 1) {
+    currentLoginLogsPage = page;
+    
+    const loadingEl = document.getElementById('login-logs-loading');
+    const emptyEl = document.getElementById('login-logs-empty');
+    const tableEl = document.getElementById('login-logs-table');
+    
+    // 显示加载中
+    loadingEl.style.display = 'block';
+    emptyEl.style.display = 'none';
+    tableEl.style.display = 'none';
+    
+    try {
+        // 构建查询参数
+        const params = new URLSearchParams({
+            page: currentLoginLogsPage,
+            page_size: currentLoginLogsPageSize
+        });
+        
+        if (currentLoginLogsSearch) {
+            params.append('search', currentLoginLogsSearch);
+        }
+        if (currentLoginMethod) {
+            params.append('login_method', currentLoginMethod);
+        }
+        if (currentTokenStatus !== '') {
+            params.append('token_status', currentTokenStatus);
+        }
+        if (currentLoginDate) {
+            params.append('login_date', currentLoginDate);
+        }
+        
+        const response = await fetch(`/admin/api/GetLoginLogs.php?${params.toString()}`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            showError(result.message || '加载登录日志失败');
+            loadingEl.style.display = 'none';
+            emptyEl.style.display = 'block';
+            return;
+        }
+        
+        const logs = result.data.logs;
+        const pagination = result.data.pagination;
+        
+        // 隐藏加载中
+        loadingEl.style.display = 'none';
+        
+        if (logs.length === 0) {
+            emptyEl.style.display = 'block';
+            return;
+        }
+        
+        // 显示表格
+        tableEl.style.display = 'block';
+        
+        // 渲染登录日志列表
+        renderLoginLogsList(logs);
+        
+        // 渲染分页
+        renderLoginLogsPagination(pagination);
+        
+    } catch (error) {
+        console.error('加载登录日志失败:', error);
+        showError('加载登录日志失败');
+        loadingEl.style.display = 'none';
+        emptyEl.style.display = 'block';
+    }
+}
+
+/**
+ * 渲染登录日志列表
+ */
+function renderLoginLogsList(logs) {
+    const tbody = document.getElementById('login-logs-tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = logs.map(log => {
+        // 状态样式
+        const statusClass = {
+            0: 'status-used',
+            1: 'status-active',
+            2: 'status-expired',
+            3: 'status-closed'
+        }[log.status] || 'status-unknown';
+        
+        // 登录方式图标
+        const methodIcon = {
+            'password': 'fa-key',
+            'sms': 'fa-sms',
+            'email': 'fa-envelope',
+            'wechat': 'fa-weixin',
+            'qq': 'fa-qq',
+            'google': 'fa-google'
+        }[log.login_method] || 'fa-sign-in-alt';
+        
+        return `
+            <tr>
+                <td>${log.id}</td>
+                <td>
+                    <div class="user-cell">
+                        ${log.avatar ? `<img src="${log.avatar}" alt="头像" class="user-avatar-small">` : '<div class="user-avatar-small user-avatar-placeholder"><i class="fas fa-user"></i></div>'}
+                        <div class="user-info-small">
+                            <div class="user-nickname">${escapeHtml(log.nickname || log.username)}</div>
+                            <div class="user-username">@${escapeHtml(log.username)}</div>
+                        </div>
+                    </div>
+                </td>
+                <td><code>${escapeHtml(log.app_id)}</code></td>
+                <td>
+                    <span class="login-method-badge">
+                        <i class="fas ${methodIcon}"></i>
+                        ${log.login_method_text}
+                    </span>
+                </td>
+                <td><code>${escapeHtml(log.login_ip || '-')}</code></td>
+                <td>${log.login_time_formatted}</td>
+                <td><span class="status-badge ${statusClass}">${log.status_text}</span></td>
+                <td>${log.expires_at_formatted}</td>
+                <td>${log.used_at_formatted || '-'}</td>
+                <td>
+                    <button class="btn-icon" onclick="viewLoginLogDetail(${log.id})" title="查看详情">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+/**
+ * 渲染登录日志分页
+ */
+function renderLoginLogsPagination(pagination) {
+    const container = document.getElementById('login-logs-pagination');
+    if (!container) return;
+    
+    const { current_page, total_pages, total } = pagination;
+    
+    if (total_pages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let html = '<div class="pagination">';
+    html += `<div class="pagination-info">共 ${total} 条记录，第 ${current_page}/${total_pages} 页</div>`;
+    html += '<div class="pagination-buttons">';
+    
+    // 上一页
+    if (current_page > 1) {
+        html += `<button class="pagination-btn" onclick="loadLoginLogs(${current_page - 1})">上一页</button>`;
+    }
+    
+    // 页码
+    const startPage = Math.max(1, current_page - 2);
+    const endPage = Math.min(total_pages, current_page + 2);
+    
+    if (startPage > 1) {
+        html += `<button class="pagination-btn" onclick="loadLoginLogs(1)">1</button>`;
+        if (startPage > 2) {
+            html += '<span class="pagination-ellipsis">...</span>';
+        }
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        if (i === current_page) {
+            html += `<button class="pagination-btn active">${i}</button>`;
+        } else {
+            html += `<button class="pagination-btn" onclick="loadLoginLogs(${i})">${i}</button>`;
+        }
+    }
+    
+    if (endPage < total_pages) {
+        if (endPage < total_pages - 1) {
+            html += '<span class="pagination-ellipsis">...</span>';
+        }
+        html += `<button class="pagination-btn" onclick="loadLoginLogs(${total_pages})">${total_pages}</button>`;
+    }
+    
+    // 下一页
+    if (current_page < total_pages) {
+        html += `<button class="pagination-btn" onclick="loadLoginLogs(${current_page + 1})">下一页</button>`;
+    }
+    
+    html += '</div></div>';
+    container.innerHTML = html;
+}
+
+/**
+ * 查看登录日志详情
+ */
+function viewLoginLogDetail(logId) {
+    // TODO: 实现登录日志详情弹窗
+    showInfo(`查看登录日志详情功能开发中... (ID: ${logId})`);
+}
+
+/**
+ * HTML 转义
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }

@@ -5,10 +5,22 @@
  */
 
 require_once __DIR__ . '/321comcn/vendor/autoload.php';
+require_once __DIR__ . '/aliyun/vendor/autoload.php';
+require_once __DIR__ . '/tencentcloud/vendor/autoload.php';
 
 use AlibabaCloud\Client\AlibabaCloud;
 use AlibabaCloud\Client\Exception\ClientException;
 use AlibabaCloud\Client\Exception\ServerException;
+use AlibabaCloud\SDK\Dysmsapi\V20170525\Dysmsapi;
+use AlibabaCloud\SDK\Dysmsapi\V20170525\Models\SendSmsRequest;
+use Darabonba\OpenApi\Models\Config;
+use AlibabaCloud\Tea\Exception\TeaError;
+use TencentCloud\Common\Credential;
+use TencentCloud\Common\Profile\ClientProfile;
+use TencentCloud\Common\Profile\HttpProfile;
+use TencentCloud\Common\Exception\TencentCloudSDKException;
+use TencentCloud\Sms\V20210111\SmsClient;
+use TencentCloud\Sms\V20210111\Models\SendSmsRequest as TencentSendSmsRequest;
 
 class SmsService {
     
@@ -215,6 +227,309 @@ class SmsService {
     }
     
     /**
+     * 发送短信（腾讯云平台）
+     */
+    public function sendSmsTencent($config, $phone, $templateParams) {
+        // 抑制腾讯云SDK在PHP 8.x下的deprecated警告
+        $originalErrorReporting = error_reporting();
+        error_reporting($originalErrorReporting & ~E_DEPRECATED);
+        
+        try {
+            // 解析 credentials
+            $credentials = [];
+            if (!empty($config['credentials'])) {
+                $credentials = json_decode($config['credentials'], true);
+            }
+            
+            // 检查 credentials 是否正确解析
+            if (!is_array($credentials)) {
+                error_log("credentials 解析失败: " . ($config['credentials'] ?? 'null'));
+                error_reporting($originalErrorReporting);
+                return [
+                    'success' => false,
+                    'error' => 'credentials 配置格式错误',
+                    'type' => 'ConfigError'
+                ];
+            }
+            
+            // 检查必需的字段
+            if (!isset($credentials['secretId']) || !isset($credentials['secretKey'])) {
+                error_log("credentials 缺少必需字段: " . json_encode($credentials));
+                error_reporting($originalErrorReporting);
+                return [
+                    'success' => false,
+                    'error' => 'credentials 缺少 secretId 或 secretKey',
+                    'type' => 'ConfigError'
+                ];
+            }
+            
+            $secretId = $credentials['secretId'];
+            $secretKey = $credentials['secretKey'];
+            
+            // 解析 channel_config 获取必需参数
+            $channelConfig = [];
+            if (!empty($config['channel_config'])) {
+                $channelConfig = json_decode($config['channel_config'], true);
+            }
+            
+            // 检查必需的 channel_config 参数
+            if (!isset($channelConfig['sdkAppId'])) {
+                error_log("channel_config 缺少 sdkAppId: " . json_encode($channelConfig));
+                error_reporting($originalErrorReporting);
+                return [
+                    'success' => false,
+                    'error' => 'channel_config 缺少 sdkAppId',
+                    'type' => 'ConfigError'
+                ];
+            }
+            
+            $sdkAppId = $channelConfig['sdkAppId'];
+            $signName = $config['signature'];
+            $templateId = $config['template_id'];
+            $endpoint = $channelConfig['endpoint'] ?? 'sms.tencentcloudapi.com';
+            $region = $channelConfig['region'] ?? 'ap-guangzhou';
+            
+            // 创建认证对象
+            $cred = new Credential($secretId, $secretKey);
+            
+            // 创建 HTTP 配置
+            $httpProfile = new HttpProfile();
+            $httpProfile->setEndpoint($endpoint);
+            
+            // 创建客户端配置
+            $clientProfile = new ClientProfile();
+            $clientProfile->setHttpProfile($httpProfile);
+            
+            // 创建客户端
+            $client = new SmsClient($cred, $region, $clientProfile);
+            
+            // 构建请求参数
+            // 腾讯云要求手机号格式：+86 开头
+            $phoneNumber = $phone;
+            if (!str_starts_with($phoneNumber, '+')) {
+                $phoneNumber = '+86' . $phoneNumber;
+            }
+            
+            // 构建模板参数数组（腾讯云要求是字符串数组，按顺序排列）
+            // 需要将关联数组转换为索引数组，保持 template_content 中定义的顺序
+            $templateParamSet = [];
+            if (is_array($templateParams)) {
+                foreach ($templateParams as $value) {
+                    $templateParamSet[] = (string)$value;
+                }
+            }
+            
+            // 记录调试信息
+            error_log("腾讯云短信参数: " . json_encode([
+                'phone' => $phoneNumber,
+                'sdk_app_id' => $sdkAppId,
+                'sign_name' => $signName,
+                'template_id' => $templateId,
+                'template_params' => $templateParams,
+                'template_param_set' => $templateParamSet,
+                'param_count' => count($templateParamSet)
+            ], JSON_UNESCAPED_UNICODE));
+            
+            // 创建请求对象，使用腾讯云官方推荐的方式
+            $req = new TencentSendSmsRequest();
+            
+            // 构建请求参数（按照官方示例格式）
+            $params = [
+                "PhoneNumberSet" => [$phoneNumber],
+                "SmsSdkAppId" => $sdkAppId,
+                "TemplateId" => $templateId,
+                "SignName" => $signName,
+                "TemplateParamSet" => $templateParamSet
+            ];
+            
+            // 使用 fromJsonString 方法设置参数
+            $req->fromJsonString(json_encode($params));
+            
+            // 记录完整的请求参数
+            error_log("腾讯云短信请求参数: " . json_encode($params, JSON_UNESCAPED_UNICODE));
+            
+            // 发送请求
+            $resp = $client->SendSms($req);
+            
+            // 恢复错误报告级别
+            error_reporting($originalErrorReporting);
+            
+            // 解析响应
+            $sendSuccess = false;
+            $bizId = null;
+            $errorMsg = null;
+            
+            // 腾讯云返回格式检查
+            if ($resp && isset($resp->SendStatusSet) && count($resp->SendStatusSet) > 0) {
+                $sendStatus = $resp->SendStatusSet[0];
+                
+                // Code 为 "Ok" 表示成功
+                if (isset($sendStatus->Code) && $sendStatus->Code === 'Ok') {
+                    $sendSuccess = true;
+                    $bizId = $sendStatus->SerialNo ?? null;
+                } else {
+                    $errorMsg = $sendStatus->Message ?? '未知错误';
+                }
+            } else {
+                $errorMsg = '响应格式错误';
+            }
+            
+            return [
+                'success' => $sendSuccess,
+                'status_code' => 200,
+                'body' => json_encode([
+                    'RequestId' => $resp->RequestId ?? null,
+                    'SendStatusSet' => $resp->SendStatusSet ?? null
+                ], JSON_UNESCAPED_UNICODE),
+                'response_data' => [
+                    'RequestId' => $resp->RequestId ?? null,
+                    'SendStatusSet' => $resp->SendStatusSet ?? null
+                ],
+                'bizid' => $bizId,
+                'error_msg' => $errorMsg
+            ];
+            
+        } catch (TencentCloudSDKException $e) {
+            error_reporting($originalErrorReporting);
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'type' => 'TencentCloudSDKException',
+                'error_code' => $e->getErrorCode() ?? null
+            ];
+        } catch (Exception $e) {
+            error_reporting($originalErrorReporting);
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'type' => 'Exception'
+            ];
+        }
+    }
+    
+    /**
+     * 发送短信（阿里云平台）
+     */
+    public function sendSmsAliyun($config, $phone, $templateParams) {
+        // 抑制阿里云SDK在PHP 8.x下的deprecated警告
+        $originalErrorReporting = error_reporting();
+        error_reporting($originalErrorReporting & ~E_DEPRECATED);
+        
+        try {
+            // 解析 credentials
+            $credentials = [];
+            if (!empty($config['credentials'])) {
+                $credentials = json_decode($config['credentials'], true);
+            }
+            
+            // 检查 credentials 是否正确解析
+            if (!is_array($credentials)) {
+                error_log("credentials 解析失败: " . ($config['credentials'] ?? 'null'));
+                error_reporting($originalErrorReporting);
+                return [
+                    'success' => false,
+                    'error' => 'credentials 配置格式错误',
+                    'type' => 'ConfigError'
+                ];
+            }
+            
+            // 检查必需的字段
+            if (!isset($credentials['accessKeyId']) || !isset($credentials['accessKeySecret'])) {
+                error_log("credentials 缺少必需字段: " . json_encode($credentials));
+                error_reporting($originalErrorReporting);
+                return [
+                    'success' => false,
+                    'error' => 'credentials 缺少 accessKeyId 或 accessKeySecret',
+                    'type' => 'ConfigError'
+                ];
+            }
+            
+            $accessKeyId = $credentials['accessKeyId'];
+            $accessKeySecret = $credentials['accessKeySecret'];
+            
+            // 解析 channel_config 获取 endpoint（可选）
+            $channelConfig = [];
+            if (!empty($config['channel_config'])) {
+                $channelConfig = json_decode($config['channel_config'], true);
+            }
+            $endpoint = $channelConfig['endpoint'] ?? 'dysmsapi.aliyuncs.com';
+            
+            // 创建配置对象
+            $openApiConfig = new Config([
+                'accessKeyId' => $accessKeyId,
+                'accessKeySecret' => $accessKeySecret,
+                'endpoint' => $endpoint
+            ]);
+            
+            // 创建客户端
+            $client = new Dysmsapi($openApiConfig);
+            
+            // 构建请求
+            $request = new SendSmsRequest([
+                'phoneNumbers' => $phone,
+                'signName' => $config['signature'],
+                'templateCode' => $config['template_id'],
+                'templateParam' => json_encode($templateParams)
+            ]);
+            
+            // 发送请求
+            $response = $client->sendSms($request);
+            
+            // 恢复错误报告级别
+            error_reporting($originalErrorReporting);
+            
+            // 解析响应
+            $body = $response->body;
+            $sendSuccess = false;
+            $bizId = null;
+            $errorMsg = null;
+            
+            // 阿里云返回格式：Code 为 "OK" 表示成功
+            if ($body && $body->code === 'OK') {
+                $sendSuccess = true;
+                $bizId = $body->bizId ?? null;
+            } else {
+                $errorMsg = $body->message ?? '未知错误';
+            }
+            
+            return [
+                'success' => $sendSuccess,
+                'status_code' => 200,
+                'body' => json_encode([
+                    'Code' => $body->code ?? null,
+                    'Message' => $body->message ?? null,
+                    'BizId' => $body->bizId ?? null,
+                    'RequestId' => $body->requestId ?? null
+                ], JSON_UNESCAPED_UNICODE),
+                'response_data' => [
+                    'Code' => $body->code ?? null,
+                    'Message' => $body->message ?? null,
+                    'BizId' => $body->bizId ?? null,
+                    'RequestId' => $body->requestId ?? null
+                ],
+                'bizid' => $bizId,
+                'error_msg' => $errorMsg
+            ];
+            
+        } catch (TeaError $e) {
+            error_reporting($originalErrorReporting);
+            return [
+                'success' => false,
+                'error' => $e->message,
+                'type' => 'TeaError',
+                'error_code' => $e->code ?? null
+            ];
+        } catch (Exception $e) {
+            error_reporting($originalErrorReporting);
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'type' => 'Exception'
+            ];
+        }
+    }
+    
+    /**
      * 发送短信（321.com.cn平台）
      */
     public function sendSms321($config, $phone, $templateParams) {
@@ -224,11 +539,14 @@ class SmsService {
         
         try {
             // 解析 credentials
-            $credentials = json_decode($config['credentials'], true);
+            $credentials = [];
+            if (!empty($config['credentials'])) {
+                $credentials = json_decode($config['credentials'], true);
+            }
             
             // 检查 credentials 是否正确解析
             if (!is_array($credentials)) {
-                error_log("credentials 解析失败: " . $config['credentials']);
+                error_log("credentials 解析失败: " . ($config['credentials'] ?? 'null'));
                 error_reporting($originalErrorReporting);
                 return [
                     'success' => false,
@@ -359,7 +677,22 @@ class SmsService {
         $expiresAt = date('Y-m-d H:i:s', time() + $validityPeriod);
         
         // 解析模板内容配置，构建模板参数
-        $templateContent = json_decode($config['template_content'], true);
+        $templateContent = [];
+        if (!empty($config['template_content'])) {
+            // 如果 template_content 已经是数组，直接使用
+            if (is_array($config['template_content'])) {
+                $templateContent = $config['template_content'];
+            } else {
+                // 否则尝试 JSON 解码
+                $templateContent = json_decode($config['template_content'], true) ?: [];
+            }
+        }
+        
+        // 兼容嵌套格式：如果解析后有 template_content 键，提取其值
+        if (isset($templateContent['template_content']) && is_array($templateContent['template_content'])) {
+            $templateContent = $templateContent['template_content'];
+        }
+        
         $templateParams = [];
         
         if (is_array($templateContent)) {
@@ -375,6 +708,16 @@ class SmsService {
                 // 可以根据需要添加更多参数映射
             }
         }
+        
+        // 记录模板参数构建日志
+        error_log("构建短信模板参数: " . json_encode([
+            'channel' => $config['channel'],
+            'template_content_raw' => $config['template_content'],
+            'template_content_parsed' => $templateContent,
+            'template_params' => $templateParams,
+            'code' => $code,
+            'validity_minutes' => $validityMinutes
+        ], JSON_UNESCAPED_UNICODE));
         
         // 发送短信
         $sendResult = null;
@@ -411,6 +754,66 @@ class SmsService {
                 
                 // 记录详细的错误日志
                 error_log("短信发送失败详情: " . json_encode([
+                    'phone' => $phone,
+                    'purpose' => $purpose,
+                    'send_result' => $sendResult,
+                    'error_reason' => $errorReason
+                ], JSON_UNESCAPED_UNICODE));
+            }
+        } elseif ($config['channel'] === 'aliyun') {
+            $sendResult = $this->sendSmsAliyun($config, $phone, $templateParams);
+            
+            if ($sendResult['success']) {
+                // 阿里云返回的 BizId 作为上游短信ID
+                $upstreamSmsId = $sendResult['bizid'] ?? null;
+                $sendStatusCode = (string)$sendResult['status_code'];
+                $sendSuccess = true;
+            } else {
+                // 提取错误原因
+                if (isset($sendResult['error_msg'])) {
+                    $errorReason = $sendResult['error_msg'];
+                } elseif (isset($sendResult['error'])) {
+                    $errorReason = $sendResult['error'];
+                } elseif (isset($sendResult['response_data']['Message'])) {
+                    $errorReason = $sendResult['response_data']['Message'];
+                } elseif (isset($sendResult['body'])) {
+                    $errorReason = '短信服务返回：' . $sendResult['body'];
+                } else {
+                    $errorReason = '未知错误';
+                }
+                
+                // 记录详细的错误日志
+                error_log("阿里云短信发送失败详情: " . json_encode([
+                    'phone' => $phone,
+                    'purpose' => $purpose,
+                    'send_result' => $sendResult,
+                    'error_reason' => $errorReason
+                ], JSON_UNESCAPED_UNICODE));
+            }
+        } elseif ($config['channel'] === 'tencent') {
+            $sendResult = $this->sendSmsTencent($config, $phone, $templateParams);
+            
+            if ($sendResult['success']) {
+                // 腾讯云返回的 SerialNo 作为上游短信ID
+                $upstreamSmsId = $sendResult['bizid'] ?? null;
+                $sendStatusCode = (string)$sendResult['status_code'];
+                $sendSuccess = true;
+            } else {
+                // 提取错误原因
+                if (isset($sendResult['error_msg'])) {
+                    $errorReason = $sendResult['error_msg'];
+                } elseif (isset($sendResult['error'])) {
+                    $errorReason = $sendResult['error'];
+                } elseif (isset($sendResult['response_data']['SendStatusSet'][0]['Message'])) {
+                    $errorReason = $sendResult['response_data']['SendStatusSet'][0]['Message'];
+                } elseif (isset($sendResult['body'])) {
+                    $errorReason = '短信服务返回：' . $sendResult['body'];
+                } else {
+                    $errorReason = '未知错误';
+                }
+                
+                // 记录详细的错误日志
+                error_log("腾讯云短信发送失败详情: " . json_encode([
                     'phone' => $phone,
                     'purpose' => $purpose,
                     'send_result' => $sendResult,

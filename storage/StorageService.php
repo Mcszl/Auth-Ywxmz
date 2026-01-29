@@ -246,8 +246,8 @@ class StorageService {
      */
     private function uploadToS3($file, $filepath) {
         try {
-            // 引入AWS SDK
-            require_once __DIR__ . '/vendor/autoload.php';
+            // 引入AWS SDK（通过包装文件设置环境变量）
+            require_once __DIR__ . '/aws_env_setup.php';
             
             // 获取S3配置
             $region = $this->config['s3_region'] ?: 'us-east-1';
@@ -276,7 +276,9 @@ class StorageService {
                 'signature_version' => 'v4',
                 'http' => [
                     'verify' => false
-                ]
+                ],
+                // 禁用从配置文件和环境变量加载凭证，避免 open_basedir 限制
+                'use_aws_shared_config_files' => false
             ];
             
             // 如果提供了自定义endpoint
@@ -369,8 +371,8 @@ class StorageService {
      */
     private function deleteFromS3($filepath) {
         try {
-            // 引入AWS SDK
-            require_once __DIR__ . '/vendor/autoload.php';
+            // 引入AWS SDK（通过包装文件设置环境变量）
+            require_once __DIR__ . '/aws_env_setup.php';
             
             // 获取S3配置
             $region = $this->config['s3_region'] ?: 'us-east-1';
@@ -399,7 +401,9 @@ class StorageService {
                 'signature_version' => 'v4',
                 'http' => [
                     'verify' => false
-                ]
+                ],
+                // 禁用从配置文件和环境变量加载凭证，避免 open_basedir 限制
+                'use_aws_shared_config_files' => false
             ];
             
             // 如果提供了自定义endpoint
@@ -462,6 +466,48 @@ class StorageService {
     }
     
     /**
+     * 获取文件的 MIME 类型
+     * 兼容不同的 PHP 配置
+     * 
+     * @param string $filepath 文件路径
+     * @return string MIME 类型
+     */
+    private function getMimeType($filepath) {
+        // 方法1：使用 finfo 扩展（推荐）
+        if (function_exists('finfo_open')) {
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mimeType = finfo_file($finfo, $filepath);
+            finfo_close($finfo);
+            if ($mimeType) {
+                return $mimeType;
+            }
+        }
+        
+        // 方法2：使用 mime_content_type 函数
+        if (function_exists('mime_content_type')) {
+            $mimeType = mime_content_type($filepath);
+            if ($mimeType) {
+                return $mimeType;
+            }
+        }
+        
+        // 方法3：根据文件扩展名推断（备用方案）
+        $extension = strtolower(pathinfo($filepath, PATHINFO_EXTENSION));
+        $mimeTypes = [
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'bmp' => 'image/bmp',
+            'svg' => 'image/svg+xml',
+            'ico' => 'image/x-icon'
+        ];
+        
+        return $mimeTypes[$extension] ?? 'application/octet-stream';
+    }
+    
+    /**
      * 移动文件到另一个存储配置
      * 用于审核通过后将文件从待审核存储移动到正式存储
      * 
@@ -495,7 +541,7 @@ class StorageService {
                 'name' => basename($sourceFilepath),
                 'tmp_name' => $tempFile,
                 'size' => filesize($tempFile),
-                'type' => mime_content_type($tempFile),
+                'type' => $this->getMimeType($tempFile),
                 'error' => UPLOAD_ERR_OK
             ];
             
@@ -579,7 +625,8 @@ class StorageService {
      */
     private function getFileContentFromS3ByPath($filepath) {
         try {
-            require_once __DIR__ . '/vendor/autoload.php';
+            // 引入AWS SDK（通过包装文件设置环境变量）
+            require_once __DIR__ . '/aws_env_setup.php';
             
             // 获取S3配置
             $region = $this->config['s3_region'] ?: 'us-east-1';
@@ -601,7 +648,9 @@ class StorageService {
                 'signature_version' => 'v4',
                 'http' => [
                     'verify' => false
-                ]
+                ],
+                // 禁用从配置文件和环境变量加载凭证，避免 open_basedir 限制
+                'use_aws_shared_config_files' => false
             ];
             
             // 如果提供了自定义endpoint
@@ -694,7 +743,8 @@ class StorageService {
      */
     private function getFileContentFromS3($filepath) {
         try {
-            require_once __DIR__ . '/vendor/autoload.php';
+            // 引入AWS SDK（通过包装文件设置环境变量）
+            require_once __DIR__ . '/aws_env_setup.php';
             
             $s3Client = new Aws\S3\S3Client([
                 'version' => 'latest',
@@ -704,7 +754,9 @@ class StorageService {
                 'credentials' => [
                     'key' => $this->config['s3_access_key'],
                     'secret' => $this->config['s3_secret_key']
-                ]
+                ],
+                // 禁用从配置文件和环境变量加载凭证，避免 open_basedir 限制
+                'use_aws_shared_config_files' => false
             ]);
             
             // 从URL中提取对象键

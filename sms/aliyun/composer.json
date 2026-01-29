@@ -1,0 +1,5 @@
+{
+    "require": {
+        "alibabacloud/dysmsapi-20170525": "4.4.0"
+    }
+}

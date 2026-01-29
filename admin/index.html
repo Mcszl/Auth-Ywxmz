@@ -236,6 +236,26 @@
                             <div class="stat-label">接入应用</div>
                         </div>
                     </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                            <i class="fas fa-portrait"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-pending-avatars">-</div>
+                            <div class="stat-label">待审核头像</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);">
+                            <i class="fas fa-user-edit"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value" id="stat-pending-nicknames">-</div>
+                            <div class="stat-label">待审核昵称</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="card">
@@ -587,6 +607,29 @@
                 <div class="page-header">
                     <h1>短信配置</h1>
                     <p>配置短信发送服务</p>
+                </div>
+                
+                <!-- 配置教程提示 -->
+                <div class="card" style="margin-bottom: 20px; border-left: 4px solid #ff6b6b;">
+                    <div class="card-body" style="padding: 12px 20px; background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div style="flex-shrink: 0; width: 36px; height: 36px; background: #ff6b6b; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-exclamation-circle" style="color: white; font-size: 18px;"></i>
+                            </div>
+                            <div style="flex: 1; display: flex; align-items: center; gap: 15px;">
+                                <span style="color: #2d3436; font-size: 14px;">
+                                    <strong style="color: #d63031;">重要提示：</strong>短信配置涉及多个参数，不同渠道配置方式不同，<strong>强烈建议先查看配置教程</strong>了解各字段的正确配置格式。
+                                </span>
+                                <a href="https://docx.2hs.cn/web/#/664374947/252832752" target="_blank" 
+                                   style="flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; background: #ff6b6b; color: white; text-decoration: none; border-radius: 4px; font-size: 13px; font-weight: 500; transition: all 0.3s; box-shadow: 0 2px 6px rgba(255, 107, 107, 0.3);"
+                                   onmouseover="this.style.background='#ee5a52'; this.style.boxShadow='0 3px 8px rgba(255, 107, 107, 0.4)'"
+                                   onmouseout="this.style.background='#ff6b6b'; this.style.boxShadow='0 2px 6px rgba(255, 107, 107, 0.3)'">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    <span>查看配置教程</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- 搜索和筛选 -->
@@ -2419,9 +2462,88 @@
                     <h1>登录日志</h1>
                     <p>查看用户登录记录</p>
                 </div>
+
+                <!-- 搜索和筛选 -->
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-body" style="padding: 20px;">
+                        <div class="search-filter-bar">
+                            <div class="search-box">
+                                <input type="text" id="login-logs-search" placeholder="搜索用户名、IP地址..." class="search-input">
+                                <button class="btn-search" id="btn-login-logs-search">
+                                    <i class="fas fa-search"></i>
+                                    搜索
+                                </button>
+                            </div>
+                            <div class="filter-box">
+                                <select id="filter-login-method" class="filter-select">
+                                    <option value="">全部登录方式</option>
+                                    <option value="password">密码登录</option>
+                                    <option value="sms">短信验证码</option>
+                                    <option value="email">邮箱验证码</option>
+                                    <option value="wechat">微信登录</option>
+                                    <option value="qq">QQ登录</option>
+                                    <option value="google">Google登录</option>
+                                </select>
+                                <select id="filter-token-status" class="filter-select">
+                                    <option value="">全部状态</option>
+                                    <option value="1">正常</option>
+                                    <option value="0">已使用</option>
+                                    <option value="2">已过期</option>
+                                    <option value="3">已关闭</option>
+                                </select>
+                                <input type="date" id="filter-login-date" class="filter-select" placeholder="登录日期">
+                                <button class="btn-reset" id="btn-reset-login-logs-filter">
+                                    <i class="fas fa-redo"></i>
+                                    重置
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 登录日志列表 -->
                 <div class="card">
-                    <div class="card-body">
-                        <p class="text-muted">功能开发中...</p>
+                    <div class="card-body" style="padding: 0;">
+                        <!-- 加载中 -->
+                        <div id="login-logs-loading" class="loading-container">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>加载中...</p>
+                        </div>
+
+                        <!-- 空状态 -->
+                        <div id="login-logs-empty" class="empty-state" style="display: none;">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <h3>暂无登录日志</h3>
+                            <p>系统中还没有登录记录</p>
+                        </div>
+
+                        <!-- 登录日志表格 -->
+                        <div id="login-logs-table" style="display: none;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>用户</th>
+                                        <th>应用ID</th>
+                                        <th>登录方式</th>
+                                        <th>登录IP</th>
+                                        <th>登录时间</th>
+                                        <th>Token状态</th>
+                                        <th>过期时间</th>
+                                        <th>使用时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="login-logs-tbody">
+                                    <!-- 登录日志数据将通过 JavaScript 动态生成 -->
+                                </tbody>
+                            </table>
+
+                            <!-- 分页 -->
+                            <div class="pagination-container" id="login-logs-pagination">
+                                <!-- 分页将通过 JavaScript 动态生成 -->
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2909,8 +3031,14 @@
 
                     <div class="form-group full-width">
                         <label for="sms-config-template-content">模板内容（参考）</label>
-                        <textarea id="sms-config-template-content" rows="3" placeholder="例如：您的验证码是${code}，有效期${expire}分钟"></textarea>
-                        <small>仅用于参考，不影响实际发送</small>
+                        <textarea id="sms-config-template-content" rows="3" placeholder='示例：{"code":"验证码"}'></textarea>
+                        <small style="color: #e74c3c; font-weight: 500;">
+                            <i class="fas fa-info-circle"></i> 
+                            <strong>重要：</strong>此字段用于定义模板参数的映射关系。
+                            配置示例：{"code":"验证码"}；
+                            详细说明请查看 
+                            <a href="https://docx.2hs.cn/web/#/664374947/252832752" target="_blank" style="color: #3498db; text-decoration: underline;">配置教程</a>
+                        </small>
                     </div>
 
                     <div class="form-group full-width">
