@@ -709,16 +709,6 @@ class SmsService {
             }
         }
         
-        // 记录模板参数构建日志
-        error_log("构建短信模板参数: " . json_encode([
-            'channel' => $config['channel'],
-            'template_content_raw' => $config['template_content'],
-            'template_content_parsed' => $templateContent,
-            'template_params' => $templateParams,
-            'code' => $code,
-            'validity_minutes' => $validityMinutes
-        ], JSON_UNESCAPED_UNICODE));
-        
         // 发送短信
         $sendResult = null;
         $upstreamSmsId = null;

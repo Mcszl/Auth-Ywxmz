@@ -5,7 +5,7 @@
  */
 
 require_once __DIR__ . '/MailService.php';
-require_once __DIR__ . '/../captcha/GeetestService.php';
+require_once __DIR__ . '/../captcha/CaptchaService.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -136,36 +136,94 @@ try {
     }
     
     // 人机验证（如果启用）
-    $geetestService = new GeetestService($pdo, $logger);
+    $captchaService = new CaptchaService($pdo, $logger);
+    
+    // 人机验证参数
+    $captchaProvider = $data['captcha_provider'] ?? '';
     $lotNumber = $data['lot_number'] ?? '';
     $captchaOutput = $data['captcha_output'] ?? '';
     $passToken = $data['pass_token'] ?? '';
     $genTime = $data['gen_time'] ?? '';
+    $turnstileToken = $data['turnstile_token'] ?? '';
+    $recaptchaToken = $data['recaptcha_token'] ?? '';
+    $hcaptchaToken = $data['hcaptcha_token'] ?? '';
     
     // 检查是否启用了人机验证
-    $captchaConfig = $geetestService->getGeetestConfig('send_email');
+    $captchaConfig = $captchaService->getCaptchaConfig('send_email');
     $captchaEnabled = ($captchaConfig !== null);
+    
+    $logger->info('captcha', '人机验证状态检查', [
+        'enabled' => $captchaEnabled,
+        'provider' => $captchaConfig['provider'] ?? null,
+        'scene' => 'send_email'
+    ]);
     
     // 如果启用了人机验证，则进行验证
     if ($captchaEnabled) {
-        // 验证极验
-        $geetestResult = $geetestService->verifyGeetest(
-            $lotNumber,
-            $captchaOutput,
-            $passToken,
-            $genTime,
-            'send_email',
-            $clientIp,
-            $email
+        // 准备验证数据
+        $captchaData = [
+            'lot_number' => $lotNumber,
+            'captcha_output' => $captchaOutput,
+            'pass_token' => $passToken,
+            'gen_time' => $genTime,
+            'turnstile_token' => $turnstileToken,
+            'recaptcha_token' => $recaptchaToken,
+            'hcaptcha_token' => $hcaptchaToken
+        ];
+        
+        // 通用人机验证
+        $captchaResult = $captchaService->verifyCaptcha(
+            $captchaConfig,
+            $captchaData,
+            $clientIp
         );
         
-        if (!$geetestResult['success']) {
-            jsonResponse(false, null, $geetestResult['message'], 400);
+        $logger->info('captcha', '人机验证结果', [
+            'success' => $captchaResult['success'],
+            'message' => $captchaResult['message']
+        ]);
+        
+        if (!$captchaResult['success']) {
+            $logger->warning('captcha', '人机验证失败，拒绝发送验证码', [
+                'email' => $email,
+                'message' => $captchaResult['message']
+            ]);
+            
+            // 保存失败的验证日志
+            $captchaService->saveVerifyLog(
+                $captchaConfig,
+                'send_email',
+                $captchaData,
+                false,
+                $clientIp,
+                $email,
+                $captchaResult
+            );
+            
+            jsonResponse(false, null, $captchaResult['message'], 400);
         }
+        
+        // 保存成功的验证日志
+        $logId = $captchaService->saveVerifyLog(
+            $captchaConfig,
+            'send_email',
+            $captchaData,
+            true,
+            $clientIp,
+            $email,
+            $captchaResult
+        );
+        
+        $logger->info('captcha', '人机验证成功，已保存日志', [
+            'log_id' => $logId,
+            'email' => $email
+        ]);
+        
+        // 保存 lot_number（如果有）
+        $verifiedLotNumber = $captchaResult['lot_number'] ?? $lotNumber;
+    } else {
+        $verifiedLotNumber = $lotNumber;
     }
-    
-    // 使用极验验证返回的 lot_number（如果有的话）
-    $verifiedLotNumber = $geetestResult['lot_number'] ?? $lotNumber;
     
     // 生成验证码
     $code = generateCode(6);
@@ -186,7 +244,7 @@ try {
             'expires_in' => 900,
             'scene' => 'send_email',
             'captcha_enabled' => $captchaEnabled,
-            'captcha_provider' => $captchaEnabled ? 'geetest' : null
+            'captcha_provider' => $captchaEnabled ? $captchaConfig['provider'] : null
         ], '验证码已发送，请查收邮件');
     } else {
         jsonResponse(false, null, $result['message'], 400);

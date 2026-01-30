@@ -10,7 +10,7 @@ error_reporting(E_ALL & ~E_DEPRECATED);
 require_once __DIR__ . '/../config/postgresql.config.php';
 require_once __DIR__ . '/../sms/SmsService.php';
 require_once __DIR__ . '/../mail/MailService.php';
-require_once __DIR__ . '/../captcha/GeetestService.php';
+require_once __DIR__ . '/../captcha/CaptchaService.php';
 require_once __DIR__ . '/../checks/NicknameCheckService.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -216,7 +216,7 @@ try {
     // 初始化服务
     $smsService = new SmsService($pdo);
     $mailService = new MailService();
-    $geetestService = new GeetestService($pdo, $logger);
+    $captchaService = new CaptchaService($pdo, $logger);
     
     // 验证验证码
     if (!empty($phone)) {
@@ -236,16 +236,34 @@ try {
     }
     
     // 检查是否启用了人机验证
-    $captchaConfig = $geetestService->getGeetestConfig('register');
+    $captchaConfig = $captchaService->getCaptchaConfig('register');
     $captchaEnabled = ($captchaConfig !== null);
+    $captchaProvider = $captchaEnabled ? $captchaConfig['provider'] : null;
     
-    // 如果启用了人机验证且提供了 lot_number，则进行二次验证
-    if ($captchaEnabled && !empty($lotNumber)) {
-        // 根据注册方式选择验证标识（手机号或邮箱）
-        $verifyIdentifier = !empty($phone) ? $phone : $email;
-        $geetestVerify = $geetestService->verifySecondTime($lotNumber, $verifyIdentifier);
-        if (!$geetestVerify['success']) {
-            jsonResponse(false, null, '人机验证已过期，请重新获取验证码', 400);
+    // 如果启用了人机验证且提供了验证参数，则进行二次验证
+    if ($captchaEnabled) {
+        // 根据不同的验证服务商获取验证参数
+        $captchaToken = null;
+        switch ($captchaProvider) {
+            case 'geetest':
+                $captchaToken = $lotNumber;
+                break;
+            case 'turnstile':
+            case 'recaptcha':
+            case 'hcaptcha':
+                $captchaToken = $input['captcha_token'] ?? '';
+                break;
+        }
+        
+        if (!empty($captchaToken)) {
+            // 根据注册方式选择验证标识（手机号或邮箱）
+            $verifyIdentifier = !empty($phone) ? $phone : $email;
+            $verifyResult = $captchaService->verifySecondTime($captchaToken, $verifyIdentifier, $captchaProvider, 'register', $clientIp);
+            if (!$verifyResult['success']) {
+                jsonResponse(false, null, '人机验证已过期，请重新获取验证码', 400);
+            }
+        } else {
+            jsonResponse(false, null, '缺少人机验证参数，请重新获取验证码', 400);
         }
     }
     
@@ -379,7 +397,7 @@ try {
             'redirect_url' => $callbackUrl . (strpos($callbackUrl, '?') !== false ? '&' : '?') . 'user_id=' . $userId,
             'scene' => 'register',
             'captcha_enabled' => $captchaEnabled,
-            'captcha_provider' => $captchaEnabled ? 'geetest' : null
+            'captcha_provider' => $captchaProvider
         ], '注册成功');
         
     } catch (PDOException $e) {

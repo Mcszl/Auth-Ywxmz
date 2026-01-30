@@ -6,8 +6,7 @@
     <title>用户注册 - 一碗小米周授权登录平台</title>
     <link rel="stylesheet" href="https://fa.2hs.cn/pro/7.0.0/css/all.css">
     <link rel="stylesheet" href="css/register.css">
-    <!-- 极验 SDK -->
-    <script src="https://static.geetest.com/v4/gt4.js"></script>
+    <!-- 人机验证 SDK 将根据配置动态加载 -->
 </head>
 <body>
     <!-- 导航栏 -->
@@ -87,8 +86,8 @@
                         </div>
                     </div>
 
-                    <!-- 极验验证容器 -->
-                    <div id="geetest-captcha" style="margin-bottom: 1.25rem;"></div>
+                    <!-- 人机验证容器 -->
+                    <div id="captcha-container-phone" style="margin-bottom: 1.25rem; display: flex; justify-content: center; align-items: center;"></div>
 
                     <div class="form-group">
                         <label for="phone-password">
@@ -170,6 +169,9 @@
                         </div>
                     </div>
 
+                    <!-- 人机验证容器 -->
+                    <div id="captcha-container-email" style="margin-bottom: 1.25rem; display: flex; justify-content: center; align-items: center;"></div>
+
                     <div class="form-group">
                         <label for="email-password">
                             <i class="fas fa-lock"></i>
@@ -239,6 +241,6 @@
     <!-- Toast 提示容器 -->
     <div class="toast-container" id="toast-container"></div>
 
-    <script src="js/register.js"></script>
+    <script src="js/register.js?v=20260129"></script>
 </body>
 </html>

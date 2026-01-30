@@ -4,7 +4,11 @@
 let urlParams = null;
 let geetestInstance = null;
 let geetestResult = null;
+let turnstileWidgetIds = {}; // Cloudflare Turnstile Widget IDs (多个表单)
+let turnstileToken = null; // Cloudflare Turnstile Token
 let captchaEnabled = false; // 是否启用人机验证
+let captchaConfig = null; // 人机验证配置
+let captchaProvider = null; // 人机验证服务商：geetest, turnstile 等
 
 document.addEventListener('DOMContentLoaded', function() {
     init();
@@ -38,8 +42,8 @@ function init() {
     // 初始化弹出框
     initModal();
     
-    // 初始化极验
-    initGeetest();
+    // 初始化人机验证
+    initCaptcha();
     
     // console.log('注册页面已加载');
 }
@@ -93,7 +97,372 @@ function updateLoginLink() {
 }
 
 // ============================================
-// 极验验证
+// 人机验证
+// ============================================
+
+/**
+ * 动态加载验证 SDK
+ */
+function loadCaptchaSDK(provider) {
+    return new Promise((resolve, reject) => {
+        let scriptUrl = '';
+        let scriptId = '';
+        
+        switch (provider) {
+            case 'geetest':
+                scriptUrl = 'https://static.geetest.com/v4/gt4.js';
+                scriptId = 'geetest-sdk';
+                break;
+            case 'turnstile':
+                scriptUrl = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+                scriptId = 'turnstile-sdk';
+                break;
+            case 'recaptcha':
+                scriptUrl = 'https://www.recaptcha.net/recaptcha/api.js';
+                scriptId = 'recaptcha-sdk';
+                break;
+            case 'hcaptcha':
+                scriptUrl = 'https://js.hcaptcha.com/1/api.js';
+                scriptId = 'hcaptcha-sdk';
+                break;
+            default:
+                reject(new Error('未知的验证服务商: ' + provider));
+                return;
+        }
+        
+        // 检查是否已经加载
+        if (document.getElementById(scriptId)) {
+            console.log('SDK 已加载:', provider);
+            resolve();
+            return;
+        }
+        
+        console.log('开始加载 SDK:', provider, scriptUrl);
+        
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.src = scriptUrl;
+        script.async = true;
+        script.defer = true;
+        
+        script.onload = () => {
+            console.log('SDK 加载成功:', provider);
+            resolve();
+        };
+        
+        script.onerror = () => {
+            console.error('SDK 加载失败:', provider);
+            reject(new Error('SDK 加载失败: ' + provider));
+        };
+        
+        document.head.appendChild(script);
+    });
+}
+
+/**
+ * 初始化人机验证
+ */
+async function initCaptcha() {
+    try {
+        console.log('开始初始化人机验证...');
+        
+        // 获取人机验证配置
+        const response = await fetch('/captcha/GetCaptchaConfig.php?scene=register');
+        const result = await response.json();
+        
+        console.log('人机验证配置响应:', result);
+        
+        if (!result.success) {
+            console.log('获取人机验证配置失败:', result.message);
+            captchaEnabled = false;
+            return;
+        }
+        
+        // 检查是否启用人机验证
+        if (!result.data.enabled) {
+            console.log('人机验证未启用');
+            captchaEnabled = false;
+            return;
+        }
+        
+        captchaConfig = result.data;
+        captchaProvider = result.data.provider;
+        captchaEnabled = true;
+        
+        console.log('人机验证已启用，服务商:', captchaProvider);
+        console.log('验证配置:', captchaConfig);
+        
+        // 动态加载对应的 SDK
+        try {
+            await loadCaptchaSDK(captchaProvider);
+        } catch (error) {
+            console.error('加载验证 SDK 失败:', error);
+            captchaEnabled = false;
+            return;
+        }
+        
+        // 根据服务商初始化对应的验证
+        if (captchaProvider === 'geetest') {
+            console.log('初始化极验验证...');
+            await initGeetest();
+        } else if (captchaProvider === 'turnstile') {
+            console.log('初始化 Cloudflare Turnstile...');
+            await initTurnstile();
+        } else if (captchaProvider === 'recaptcha') {
+            console.log('初始化 Google reCAPTCHA...');
+            await initRecaptcha();
+        } else if (captchaProvider === 'hcaptcha') {
+            console.log('初始化 hCaptcha...');
+            await initHcaptcha();
+        } else {
+            console.warn('未知的验证服务商:', captchaProvider);
+        }
+        
+    } catch (error) {
+        console.error('初始化人机验证失败:', error);
+        captchaEnabled = false;
+    }
+}
+
+/**
+ * 初始化 Cloudflare Turnstile
+ */
+async function initTurnstile() {
+    try {
+        console.log('开始初始化 Cloudflare Turnstile...');
+        
+        // 等待 Turnstile SDK 加载（最多等待 5 秒）
+        let attempts = 0;
+        const maxAttempts = 50; // 5秒 / 100ms = 50次
+        
+        while (typeof turnstile === 'undefined' && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        // 检查 Turnstile SDK 是否加载
+        if (typeof turnstile === 'undefined') {
+            console.error('Cloudflare Turnstile SDK 未加载（超时）');
+            captchaEnabled = false;
+            return;
+        }
+        
+        console.log('Turnstile SDK 已加载');
+        
+        const siteKey = captchaConfig.site_key;
+        console.log('Site Key:', siteKey);
+        
+        // 为两个表单都渲染 Turnstile
+        const containers = ['captcha-container-phone', 'captcha-container-email'];
+        
+        containers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                console.log('渲染 Turnstile 到容器:', containerId);
+                
+                // 清空容器
+                container.innerHTML = '';
+                
+                // 渲染 Turnstile
+                try {
+                    const widgetId = turnstile.render(`#${containerId}`, {
+                        sitekey: siteKey,
+                        theme: 'light',
+                        callback: function(token) {
+                            turnstileToken = token;
+                            console.log('Turnstile 验证成功，token:', token.substring(0, 20) + '...');
+                        },
+                        'error-callback': function(error) {
+                            turnstileToken = null;
+                            console.error('Turnstile 验证失败:', error);
+                        },
+                        'expired-callback': function() {
+                            turnstileToken = null;
+                            console.log('Turnstile 验证已过期');
+                        }
+                    });
+                    
+                    turnstileWidgetIds[containerId] = widgetId;
+                    console.log('Turnstile 渲染成功:', containerId, 'Widget ID:', widgetId);
+                } catch (renderError) {
+                    console.error('Turnstile 渲染失败:', containerId, renderError);
+                }
+            } else {
+                console.warn('容器不存在:', containerId);
+            }
+        });
+        
+        console.log('Turnstile 初始化完成');
+        
+    } catch (error) {
+        console.error('初始化 Turnstile 失败:', error);
+        captchaEnabled = false;
+    }
+}
+
+/**
+ * 初始化 Google reCAPTCHA
+ */
+async function initRecaptcha() {
+    try {
+        console.log('开始初始化 Google reCAPTCHA...');
+        
+        // 等待 reCAPTCHA SDK 加载（最多等待 10 秒）
+        let attempts = 0;
+        const maxAttempts = 100; // 10秒 / 100ms = 100次
+        
+        // 等待 grecaptcha 对象和 ready 方法都可用
+        while (attempts < maxAttempts) {
+            if (typeof grecaptcha !== 'undefined' && typeof grecaptcha.ready === 'function') {
+                break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        // 检查 grecaptcha 对象是否存在
+        if (typeof grecaptcha === 'undefined') {
+            console.error('Google reCAPTCHA SDK 未加载（超时）');
+            captchaEnabled = false;
+            return;
+        }
+        
+        // 检查 grecaptcha.ready 方法是否可用
+        if (typeof grecaptcha.ready !== 'function') {
+            console.error('Google reCAPTCHA SDK 加载不完整（ready 方法不可用）');
+            captchaEnabled = false;
+            return;
+        }
+        
+        console.log('reCAPTCHA SDK 已完全加载');
+        
+        const siteKey = captchaConfig.site_key;
+        console.log('Site Key:', siteKey);
+        
+        // 等待 grecaptcha.render 方法可用
+        await grecaptcha.ready(async function() {
+            // 为两个表单都渲染 reCAPTCHA
+            const containers = ['captcha-container-phone', 'captcha-container-email'];
+            
+            containers.forEach(containerId => {
+                const container = document.getElementById(containerId);
+                if (container) {
+                    console.log('渲染 reCAPTCHA 到容器:', containerId);
+                    
+                    // 清空容器
+                    container.innerHTML = '';
+                    
+                    // 渲染 reCAPTCHA
+                    try {
+                        grecaptcha.render(containerId, {
+                            'sitekey': siteKey,
+                            'theme': 'light',
+                            'callback': function(token) {
+                                turnstileToken = token; // 复用 turnstileToken 变量
+                                console.log('reCAPTCHA 验证成功，token:', token.substring(0, 20) + '...');
+                            },
+                            'expired-callback': function() {
+                                turnstileToken = null;
+                                console.log('reCAPTCHA 验证已过期');
+                            },
+                            'error-callback': function() {
+                                turnstileToken = null;
+                                console.error('reCAPTCHA 验证失败');
+                            }
+                        });
+                        console.log('reCAPTCHA 渲染成功:', containerId);
+                    } catch (renderError) {
+                        console.error('reCAPTCHA 渲染失败:', containerId, renderError);
+                    }
+                } else {
+                    console.warn('容器不存在:', containerId);
+                }
+            });
+        });
+        
+        console.log('reCAPTCHA 初始化完成');
+        
+    } catch (error) {
+        console.error('初始化 reCAPTCHA 失败:', error);
+        captchaEnabled = false;
+    }
+}
+
+/**
+ * 初始化 hCaptcha
+ */
+async function initHcaptcha() {
+    try {
+        console.log('开始初始化 hCaptcha...');
+        
+        // 等待 hCaptcha SDK 加载（最多等待 5 秒）
+        let attempts = 0;
+        const maxAttempts = 50;
+        
+        while (typeof hcaptcha === 'undefined' && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            attempts++;
+        }
+        
+        if (typeof hcaptcha === 'undefined') {
+            console.error('hCaptcha SDK 未加载（超时）');
+            captchaEnabled = false;
+            return;
+        }
+        
+        console.log('hCaptcha SDK 已加载');
+        
+        const siteKey = captchaConfig.site_key;
+        console.log('Site Key:', siteKey);
+        
+        // 为两个表单都渲染 hCaptcha
+        const containers = ['captcha-container-phone', 'captcha-container-email'];
+        
+        containers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            if (container) {
+                console.log('渲染 hCaptcha 到容器:', containerId);
+                
+                // 清空容器
+                container.innerHTML = '';
+                
+                // 渲染 hCaptcha
+                try {
+                    hcaptcha.render(containerId, {
+                        'sitekey': siteKey,
+                        'theme': 'light',
+                        'callback': function(token) {
+                            turnstileToken = token; // 复用 turnstileToken 变量
+                            console.log('hCaptcha 验证成功，token:', token.substring(0, 20) + '...');
+                        },
+                        'expired-callback': function() {
+                            turnstileToken = null;
+                            console.log('hCaptcha 验证已过期');
+                        },
+                        'error-callback': function() {
+                            turnstileToken = null;
+                            console.error('hCaptcha 验证失败');
+                        }
+                    });
+                    console.log('hCaptcha 渲染成功:', containerId);
+                } catch (renderError) {
+                    console.error('hCaptcha 渲染失败:', containerId, renderError);
+                }
+            } else {
+                console.warn('容器不存在:', containerId);
+            }
+        });
+        
+        console.log('hCaptcha 初始化完成');
+        
+    } catch (error) {
+        console.error('初始化 hCaptcha 失败:', error);
+        captchaEnabled = false;
+    }
+}
+
+// ============================================
+// 极验验证（保留兼容）
 // ============================================
 
 /**
@@ -101,35 +470,14 @@ function updateLoginLink() {
  */
 async function initGeetest() {
     try {
-        // 获取极验配置
-        const response = await fetch('/captcha/GetGeetestConfig.php?scene=send_sms');
-        const result = await response.json();
-        
-        if (!result.success) {
-            // console.error('获取极验配置失败:', result.message);
-            captchaEnabled = false;
-            return;
-        }
-        
-        // 检查是否启用人机验证
-        if (!result.data.enabled) {
-            // console.log('人机验证未启用');
-            captchaEnabled = false;
-            return;
-        }
-        
         // 检查极验 SDK 是否加载
         if (typeof initGeetest4 === 'undefined') {
-            // console.error('极验 SDK 未加载，initGeetest4 函数不存在');
+            console.error('极验 SDK 未加载');
             captchaEnabled = false;
             return;
         }
         
-        const config = result.data;
-        // console.log('极验配置:', config);
-        
-        // 标记人机验证已启用
-        captchaEnabled = true;
+        const config = captchaConfig;
         
         // 初始化极验 V4
         initGeetest4({
@@ -402,48 +750,52 @@ async function sendVerificationCode(target, btn) {
     const originalText = btn.textContent;
     
     // 如果启用了人机验证，则需要先完成验证
-    let geetestData = null;
+    let captchaData = null;
     if (captchaEnabled) {
-        // 检查极验是否已初始化
-        // console.log('检查极验状态, geetestInstance:', geetestInstance);
-        
-        if (!geetestInstance) {
-            showError('人机验证服务正在加载中，请稍后再试', '提示');
-            
-            // 尝试重新初始化极验
-            // console.log('尝试重新初始化极验...');
-            await initGeetest();
-            
-            // 等待1秒后再次检查
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
+        if (captchaProvider === 'geetest') {
+            // 极验验证
             if (!geetestInstance) {
-                showError('人机验证服务未就绪，请刷新页面重试', '验证失败');
+                showError('人机验证服务正在加载中，请稍后再试', '提示');
+                
+                // 尝试重新初始化极验
+                await initGeetest();
+                
+                // 等待1秒后再次检查
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                if (!geetestInstance) {
+                    showError('人机验证服务未就绪，请刷新页面重试', '验证失败');
+                    return;
+                }
+            }
+            
+            try {
+                // 显示极验验证
+                captchaData = await showGeetest();
+                
+                if (!captchaData) {
+                    showError('请完成人机验证');
+                    return;
+                }
+            } catch (error) {
+                if (error.message === '极验未初始化') {
+                    showError('人机验证服务未就绪，请刷新页面重试', '验证失败');
+                } else if (error.message === '验证超时') {
+                    showError('验证超时，请重试', '验证超时');
+                } else {
+                    showError('人机验证失败，请重试', '验证失败');
+                }
                 return;
             }
-        }
-        
-        try {
-            // 显示极验验证
-            // console.log('准备显示极验验证...');
-            geetestData = await showGeetest();
-            
-            if (!geetestData) {
+        } else if (captchaProvider === 'turnstile' || captchaProvider === 'recaptcha' || captchaProvider === 'hcaptcha') {
+            // Cloudflare Turnstile / Google reCAPTCHA / hCaptcha 验证
+            if (!turnstileToken) {
                 showError('请完成人机验证');
                 return;
             }
-            
-            // console.log('极验验证完成，准备发送验证码...');
-        } catch (error) {
-            // console.error('极验验证错误:', error);
-            if (error.message === '极验未初始化') {
-                showError('人机验证服务未就绪，请刷新页面重试', '验证失败');
-            } else if (error.message === '验证超时') {
-                showError('验证超时，请重试', '验证超时');
-            } else {
-                showError('人机验证失败，请重试', '验证失败');
-            }
-            return;
+            captchaData = {
+                captcha_token: turnstileToken
+            };
         }
     }
     
@@ -456,18 +808,27 @@ async function sendVerificationCode(target, btn) {
         // 构建请求数据
         const requestData = isPhone ? { phone: target } : { email: target };
         
-        // 如果有极验数据，则添加到请求中
-        if (geetestData) {
-            requestData.lot_number = geetestData.lot_number;
-            requestData.captcha_output = geetestData.captcha_output;
-            requestData.pass_token = geetestData.pass_token;
-            requestData.gen_time = geetestData.gen_time;
-            
-            console.log('发送极验数据:', {
-                lot_number: geetestData.lot_number,
-                gen_time: geetestData.gen_time,
-                gen_time_type: typeof geetestData.gen_time
-            });
+        // 如果有人机验证数据，则添加到请求中
+        if (captchaData) {
+            if (captchaProvider === 'geetest') {
+                requestData.lot_number = captchaData.lot_number;
+                requestData.captcha_output = captchaData.captcha_output;
+                requestData.pass_token = captchaData.pass_token;
+                requestData.gen_time = captchaData.gen_time;
+                
+                console.log('发送极验数据:', {
+                    lot_number: captchaData.lot_number,
+                    gen_time: captchaData.gen_time,
+                    gen_time_type: typeof captchaData.gen_time
+                });
+            } else if (captchaProvider === 'turnstile') {
+                requestData.turnstile_token = captchaData.captcha_token;
+            } else if (captchaProvider === 'recaptcha') {
+                requestData.recaptcha_token = captchaData.captcha_token;
+            } else if (captchaProvider === 'hcaptcha') {
+                requestData.hcaptcha_token = captchaData.captcha_token;
+            }
+            requestData.captcha_provider = captchaProvider;
         }
         
         // 根据类型选择 API 端点
@@ -639,6 +1000,48 @@ async function handleRegister(type) {
         return;
     }
     
+    // 构建请求数据
+    const requestData = {
+        app_id: urlParams.get('app_id') || '',
+        callback_url: urlParams.get('callback_url') || '',
+        permissions: urlParams.get('permissions') || '',
+        username: username,
+        nickname: nickname,
+        phone: type === 'phone' ? contact : '',
+        email: type === 'email' ? contact : '',
+        code: code,
+        code_id: codeId,
+        password: password,
+        lot_number: lotNumber
+    };
+    
+    // 如果启用了人机验证，添加验证参数
+    if (captchaEnabled) {
+        if (captchaProvider === 'geetest') {
+            // 极验验证：使用从发送验证码按钮保存的 lot_number
+            if (lotNumber) {
+                requestData.captcha_provider = 'geetest';
+            } else {
+                showError('缺少人机验证参数，请重新获取验证码');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+                return;
+            }
+        } else if (captchaProvider === 'turnstile' || captchaProvider === 'recaptcha' || captchaProvider === 'hcaptcha') {
+            // Cloudflare Turnstile / Google reCAPTCHA / hCaptcha：使用从发送验证码按钮保存的 lot_number
+            // lot_number 是后端在发送验证码时保存的验证标识，用于二次验证
+            if (lotNumber) {
+                requestData.captcha_token = lotNumber;
+                requestData.captcha_provider = captchaProvider;
+            } else {
+                showError('缺少人机验证参数，请重新获取验证码');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+                return;
+            }
+        }
+    }
+    
     try {
         // 调用注册 API
         const response = await fetch('/api/register.php', {
@@ -646,19 +1049,7 @@ async function handleRegister(type) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                app_id: urlParams.get('app_id') || '',
-                callback_url: urlParams.get('callback_url') || '',
-                permissions: urlParams.get('permissions') || '',
-                username: username,
-                nickname: nickname,
-                phone: type === 'phone' ? contact : '',
-                email: type === 'email' ? contact : '',
-                code: code,
-                code_id: codeId,  // 添加 code_id
-                password: password,
-                lot_number: lotNumber
-            })
+            body: JSON.stringify(requestData)
         });
         
         const result = await response.json();

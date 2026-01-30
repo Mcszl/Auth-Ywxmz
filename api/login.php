@@ -10,7 +10,7 @@ error_reporting(E_ALL & ~E_DEPRECATED);
 require_once __DIR__ . '/../config/postgresql.config.php';
 require_once __DIR__ . '/../sms/SmsService.php';
 require_once __DIR__ . '/../mail/MailService.php';
-require_once __DIR__ . '/../captcha/GeetestService.php';
+require_once __DIR__ . '/../captcha/CaptchaService.php';
 require_once __DIR__ . '/../logs/SystemLogger.php';
 require_once __DIR__ . '/../api/OpenIdService.php';
 
@@ -257,41 +257,149 @@ try {
     // 初始化服务
     $smsService = new SmsService($pdo);
     $mailService = new MailService();
-    $geetestService = new GeetestService($pdo, $logger);
+    $captchaService = new CaptchaService($pdo, $logger);
     $openIdService = new OpenIdService($pdo);
     
     // 验证登录方式是否在应用允许的登录方式中
     $user = null;
     
     // 检查是否启用了人机验证（登录场景）
-    $captchaConfig = $geetestService->getGeetestConfig('login');
+    $captchaConfig = $captchaService->getCaptchaConfig('login');
     $captchaEnabled = ($captchaConfig !== null);
+    $captchaProvider = $captchaEnabled ? $captchaConfig['provider'] : null;
     
-    // 如果启用了人机验证且提供了 lot_number，则进行二次验证
-    // 注意：只有在验证码登录时才需要二次验证（因为发送验证码时已经验证过一次）
+    // 如果启用了人机验证且提供了验证参数，则进行二次验证
+    // 注意：
+    // - 验证码登录（sms/email）：需要二次验证（因为发送验证码时已经验证过一次）
+    // - 密码登录（password）：需要直接验证（因为没有发送验证码的步骤）
     $needSecondVerify = false;
+    $needDirectVerify = false;
+    
     if ($loginMethod === 'sms' || $loginMethod === 'email') {
         $needSecondVerify = true;
+    } elseif ($loginMethod === 'password') {
+        $needDirectVerify = true;
     }
     
-    if ($captchaEnabled && $needSecondVerify && !empty($lotNumber)) {
-        $geetestVerify = $geetestService->verifySecondTime($lotNumber, $account);
-        if (!$geetestVerify['success']) {
-            $logger->warning('login', '人机验证二次验证失败', [
+    if ($captchaEnabled && $needSecondVerify) {
+        // 根据不同的验证服务商获取验证参数
+        $captchaToken = null;
+        switch ($captchaProvider) {
+            case 'geetest':
+                $captchaToken = $lotNumber;
+                break;
+            case 'turnstile':
+            case 'recaptcha':
+            case 'hcaptcha':
+                $captchaToken = $input['captcha_token'] ?? '';
+                break;
+        }
+        
+        if (!empty($captchaToken)) {
+            $verifyResult = $captchaService->verifySecondTime($captchaToken, $account, $captchaProvider, 'login', $clientIp);
+            if (!$verifyResult['success']) {
+                $logger->warning('login', '人机验证二次验证失败', [
+                    'account' => $account,
+                    'login_method' => $loginMethod,
+                    'captcha_provider' => $captchaProvider,
+                    'message' => $verifyResult['message']
+                ]);
+                jsonResponse(false, null, $verifyResult['message'], 400);
+            }
+        } else {
+            // 如果启用了人机验证但没有提供验证参数
+            $logger->warning('login', '缺少人机验证参数', [
                 'account' => $account,
                 'login_method' => $loginMethod,
-                'message' => $geetestVerify['message']
+                'captcha_enabled' => $captchaEnabled,
+                'captcha_provider' => $captchaProvider
             ]);
-            jsonResponse(false, null, $geetestVerify['message'], 400);
+            jsonResponse(false, null, '缺少人机验证参数，请重新获取验证码', 400);
         }
-    } elseif ($captchaEnabled && $needSecondVerify && empty($lotNumber)) {
-        // 如果启用了人机验证但没有提供 lot_number，说明可能是场景配置问题
-        $logger->warning('login', '缺少人机验证参数', [
-            'account' => $account,
-            'login_method' => $loginMethod,
-            'captcha_enabled' => $captchaEnabled
-        ]);
-        jsonResponse(false, null, '缺少人机验证参数，请重新获取验证码', 400);
+    }
+    
+    // 密码登录时的直接验证
+    if ($captchaEnabled && $needDirectVerify) {
+        // 根据不同的验证服务商获取验证参数
+        $captchaToken = null;
+        switch ($captchaProvider) {
+            case 'geetest':
+                $captchaToken = $lotNumber;
+                break;
+            case 'turnstile':
+            case 'recaptcha':
+            case 'hcaptcha':
+                $captchaToken = $input['captcha_token'] ?? '';
+                break;
+        }
+        
+        if (!empty($captchaToken)) {
+            // 准备验证数据
+            $captchaData = [
+                'lot_number' => $lotNumber,
+                'captcha_output' => $input['captcha_output'] ?? '',
+                'pass_token' => $input['pass_token'] ?? '',
+                'gen_time' => $input['gen_time'] ?? '',
+                'turnstile_token' => $input['turnstile_token'] ?? $captchaToken,
+                'recaptcha_token' => $input['recaptcha_token'] ?? $captchaToken,
+                'hcaptcha_token' => $input['hcaptcha_token'] ?? $captchaToken
+            ];
+            
+            // 直接验证人机验证
+            $verifyResult = $captchaService->verifyCaptcha(
+                $captchaConfig,
+                $captchaData,
+                $clientIp
+            );
+            
+            if (!$verifyResult['success']) {
+                $logger->warning('login', '人机验证失败', [
+                    'account' => $account,
+                    'login_method' => $loginMethod,
+                    'captcha_provider' => $captchaProvider,
+                    'message' => $verifyResult['message']
+                ]);
+                
+                // 保存失败的验证日志
+                $captchaService->saveVerifyLog(
+                    $captchaConfig,
+                    'login',
+                    $captchaData,
+                    false,
+                    $clientIp,
+                    $account,
+                    $verifyResult
+                );
+                
+                jsonResponse(false, null, $verifyResult['message'], 400);
+            }
+            
+            // 保存成功的验证日志
+            $captchaService->saveVerifyLog(
+                $captchaConfig,
+                'login',
+                $captchaData,
+                true,
+                $clientIp,
+                $account,
+                $verifyResult
+            );
+            
+            $logger->info('login', '人机验证成功', [
+                'account' => $account,
+                'login_method' => $loginMethod,
+                'captcha_provider' => $captchaProvider
+            ]);
+        } else {
+            // 如果启用了人机验证但没有提供验证参数
+            $logger->warning('login', '缺少人机验证参数', [
+                'account' => $account,
+                'login_method' => $loginMethod,
+                'captcha_enabled' => $captchaEnabled,
+                'captcha_provider' => $captchaProvider
+            ]);
+            jsonResponse(false, null, '请完成人机验证', 400);
+        }
     }
     
     switch ($loginMethod) {
@@ -504,7 +612,7 @@ try {
             'login_method' => $loginMethod,
             'scene' => 'login',
             'captcha_enabled' => $captchaEnabled,
-            'captcha_provider' => $captchaEnabled ? 'geetest' : null
+            'captcha_provider' => $captchaProvider
         ], '登录成功');
         
     } catch (PDOException $e) {

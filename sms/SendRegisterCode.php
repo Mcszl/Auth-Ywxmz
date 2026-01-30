@@ -10,7 +10,7 @@ error_reporting(E_ALL & ~E_DEPRECATED);
 require_once __DIR__ . '/../config/postgresql.config.php';
 require_once __DIR__ . '/RateLimitService.php';
 require_once __DIR__ . '/SmsService.php';
-require_once __DIR__ . '/../captcha/GeetestService.php';
+require_once __DIR__ . '/../captcha/CaptchaService.php';
 require_once __DIR__ . '/../logs/SystemLogger.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -65,11 +65,19 @@ try {
     $input = json_decode(file_get_contents('php://input'), true);
     $phone = $input['phone'] ?? '';
     
+    // 人机验证参数
+    $captchaProvider = $input['captcha_provider'] ?? '';
+    
     // 极验参数
     $lotNumber = $input['lot_number'] ?? '';
     $captchaOutput = $input['captcha_output'] ?? '';
     $passToken = $input['pass_token'] ?? '';
     $genTime = $input['gen_time'] ?? '';
+    
+    // Turnstile/reCAPTCHA/hCaptcha 参数
+    $turnstileToken = $input['turnstile_token'] ?? '';
+    $recaptchaToken = $input['recaptcha_token'] ?? '';
+    $hcaptchaToken = $input['hcaptcha_token'] ?? '';
     
     // 验证手机号
     if (empty($phone)) {
@@ -94,7 +102,7 @@ try {
     
     // 初始化服务
     $logger = new SystemLogger($pdo);
-    $geetestService = new GeetestService($pdo, $logger);
+    $captchaService = new CaptchaService($pdo, $logger);
     $rateLimitService = new RateLimitService($pdo);
     $smsService = new SmsService($pdo);
     
@@ -104,48 +112,84 @@ try {
     ]);
     
     // 检查是否启用了人机验证
-    $captchaConfig = $geetestService->getGeetestConfig('send_sms');
+    $captchaConfig = $captchaService->getCaptchaConfig('send_sms');
     $captchaEnabled = ($captchaConfig !== null);
     
     $logger->info('captcha', '人机验证状态检查', [
         'enabled' => $captchaEnabled,
         'has_config' => ($captchaConfig !== null),
+        'provider' => $captchaConfig['provider'] ?? null,
         'scene' => 'send_sms'
     ]);
     
     // 如果启用了人机验证，则进行验证
     if ($captchaEnabled) {
         $logger->info('captcha', '开始人机验证', [
-            'has_lot_number' => !empty($lotNumber),
-            'has_captcha_output' => !empty($captchaOutput),
-            'has_pass_token' => !empty($passToken),
-            'has_gen_time' => !empty($genTime)
+            'provider' => $captchaConfig['provider'],
+            'captcha_provider_from_client' => $captchaProvider
         ]);
         
-        // 极验验证（服务端二次验证）
-        $geetestResult = $geetestService->verifyGeetest(
-            $lotNumber,
-            $captchaOutput,
-            $passToken,
-            $genTime,
-            'send_sms',
-            $clientIp,
-            $phone
+        // 准备验证数据
+        $captchaData = [
+            'lot_number' => $lotNumber,
+            'captcha_output' => $captchaOutput,
+            'pass_token' => $passToken,
+            'gen_time' => $genTime,
+            'turnstile_token' => $turnstileToken,
+            'recaptcha_token' => $recaptchaToken,
+            'hcaptcha_token' => $hcaptchaToken
+        ];
+        
+        // 通用人机验证（支持多种服务商）
+        $captchaResult = $captchaService->verifyCaptcha(
+            $captchaConfig,
+            $captchaData,
+            $clientIp
         );
         
         $logger->info('captcha', '人机验证结果', [
-            'success' => $geetestResult['success'],
-            'message' => $geetestResult['message'],
-            'disabled' => $geetestResult['disabled'] ?? false
+            'success' => $captchaResult['success'],
+            'message' => $captchaResult['message']
         ]);
         
-        if (!$geetestResult['success']) {
+        if (!$captchaResult['success']) {
             $logger->warning('captcha', '人机验证失败，拒绝发送验证码', [
                 'phone' => $phone,
-                'message' => $geetestResult['message']
+                'message' => $captchaResult['message']
             ]);
-            jsonResponse(false, null, $geetestResult['message'] ?? '人机验证失败', 400);
+            
+            // 保存失败的验证日志
+            $captchaService->saveVerifyLog(
+                $captchaConfig,
+                'send_sms',
+                $captchaData,
+                false,
+                $clientIp,
+                $phone,
+                $captchaResult
+            );
+            
+            jsonResponse(false, null, $captchaResult['message'] ?? '人机验证失败', 400);
         }
+        
+        // 保存成功的验证日志
+        $logId = $captchaService->saveVerifyLog(
+            $captchaConfig,
+            'send_sms',
+            $captchaData,
+            true,
+            $clientIp,
+            $phone,
+            $captchaResult
+        );
+        
+        $logger->info('captcha', '人机验证成功，已保存日志', [
+            'log_id' => $logId,
+            'phone' => $phone
+        ]);
+        
+        // 保存 lot_number（如果有）
+        $lotNumber = $captchaResult['lot_number'] ?? $lotNumber;
     } else {
         $logger->info('captcha', '人机验证已关闭，跳过验证');
     }
@@ -202,7 +246,7 @@ try {
         'lot_number' => $lotNumber,
         'scene' => 'send_sms',
         'captcha_enabled' => $captchaEnabled,
-        'captcha_provider' => $captchaEnabled ? 'geetest' : null
+        'captcha_provider' => $captchaEnabled ? $captchaConfig['provider'] : null
     ]), $result['message']);
     
 } catch (Exception $e) {

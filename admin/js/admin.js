@@ -7238,84 +7238,88 @@ function showCaptchaLogDetailModal(log) {
     const statusClass = log.verify_success ? 'success' : 'danger';
     
     let detailHtml = `
-        <div class="modal-detail">
-            <div class="detail-row">
-                <span class="detail-label">日志ID:</span>
-                <span class="detail-value">${escapeHtml(log.id)}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">验证场景:</span>
-                <span class="detail-value">${escapeHtml(sceneText)}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">服务商:</span>
-                <span class="detail-value">${escapeHtml(providerText)}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">验证结果:</span>
-                <span class="detail-value"><span class="badge badge-${statusClass}">${statusText}</span></span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">流水号:</span>
-                <span class="detail-value">${escapeHtml(log.lot_number || '-')}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">IP地址:</span>
-                <span class="detail-value">${escapeHtml(log.client_ip || '-')}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">User Agent:</span>
-                <span class="detail-value" style="word-break: break-all;">${escapeHtml(log.user_agent || '-')}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">手机号:</span>
-                <span class="detail-value">${escapeHtml(log.phone || '-')}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">邮箱:</span>
-                <span class="detail-value">${escapeHtml(log.email || '-')}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">用户ID:</span>
-                <span class="detail-value">${escapeHtml(log.user_id || '-')}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">验证时间:</span>
-                <span class="detail-value">${escapeHtml(log.created_at)}</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">过期时间:</span>
-                <span class="detail-value">${escapeHtml(log.expires_at || '-')}</span>
-            </div>
+        <div style="padding: 20px;">
+            <div style="display: grid; gap: 15px;">
+                <div style="display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+                    <span style="width: 120px; color: #666; font-weight: 500;">日志ID:</span>
+                    <span style="flex: 1; color: #333;">${escapeHtml(log.id)}</span>
+                </div>
+                <div style="display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+                    <span style="width: 120px; color: #666; font-weight: 500;">验证场景:</span>
+                    <span style="flex: 1; color: #333;">${escapeHtml(sceneText)}</span>
+                </div>
+                <div style="display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+                    <span style="width: 120px; color: #666; font-weight: 500;">服务商:</span>
+                    <span style="flex: 1; color: #333;">${escapeHtml(providerText)}</span>
+                </div>
+                <div style="display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+                    <span style="width: 120px; color: #666; font-weight: 500;">验证结果:</span>
+                    <span style="flex: 1;">
+                        <span style="display: inline-block; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 500; background: ${log.verify_success ? '#d4edda' : '#f8d7da'}; color: ${log.verify_success ? '#155724' : '#721c24'};">
+                            ${statusText}
+                        </span>
+                    </span>
+                </div>
+                <div style="display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+                    <span style="width: 120px; color: #666; font-weight: 500;">流水号:</span>
+                    <span style="flex: 1; color: #333; word-break: break-all;">${escapeHtml(log.lot_number || '-')}</span>
+                </div>
+                <div style="display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+                    <span style="width: 120px; color: #666; font-weight: 500;">IP地址:</span>
+                    <span style="flex: 1; color: #333;">${escapeHtml(log.client_ip || '-')}</span>
+                </div>
+                <div style="display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+                    <span style="width: 120px; color: #666; font-weight: 500;">User Agent:</span>
+                    <span style="flex: 1; color: #333; word-break: break-all; font-size: 13px;">${escapeHtml(log.user_agent || '-')}</span>
+                </div>
+                <div style="display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+                    <span style="width: 120px; color: #666; font-weight: 500;">手机号:</span>
+                    <span style="flex: 1; color: #333;">${escapeHtml(log.phone || '-')}</span>
+                </div>
+                <div style="display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+                    <span style="width: 120px; color: #666; font-weight: 500;">邮箱:</span>
+                    <span style="flex: 1; color: #333;">${escapeHtml(log.email || '-')}</span>
+                </div>
+                <div style="display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+                    <span style="width: 120px; color: #666; font-weight: 500;">用户ID:</span>
+                    <span style="flex: 1; color: #333;">${escapeHtml(log.user_id || '-')}</span>
+                </div>
+                <div style="display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+                    <span style="width: 120px; color: #666; font-weight: 500;">验证时间:</span>
+                    <span style="flex: 1; color: #333;">${escapeHtml(log.created_at)}</span>
+                </div>
+                <div style="display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+                    <span style="width: 120px; color: #666; font-weight: 500;">过期时间:</span>
+                    <span style="flex: 1; color: #333;">${escapeHtml(log.expires_at || '-')}</span>
+                </div>
     `;
     
     if (log.error_message) {
         detailHtml += `
-            <div class="detail-row">
-                <span class="detail-label">错误信息:</span>
-                <span class="detail-value" style="color: #f5576c;">${escapeHtml(log.error_message)}</span>
-            </div>
+                <div style="display: flex; padding: 10px 0; border-bottom: 1px solid #f0f0f0;">
+                    <span style="width: 120px; color: #666; font-weight: 500;">错误信息:</span>
+                    <span style="flex: 1; color: #f5576c; word-break: break-all;">${escapeHtml(log.error_message)}</span>
+                </div>
         `;
     }
     
     if (log.verify_result) {
         detailHtml += `
-            <div class="detail-row">
-                <span class="detail-label">验证结果详情:</span>
-                <span class="detail-value"><pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto;">${escapeHtml(JSON.stringify(log.verify_result, null, 2))}</pre></span>
-            </div>
+                <div style="display: flex; padding: 10px 0;">
+                    <span style="width: 120px; color: #666; font-weight: 500;">验证结果详情:</span>
+                    <span style="flex: 1;">
+                        <pre style="background: #f5f5f5; padding: 15px; border-radius: 6px; overflow-x: auto; margin: 0; font-size: 13px; line-height: 1.6; border: 1px solid #e0e0e0;">${escapeHtml(JSON.stringify(log.verify_result, null, 2))}</pre>
+                    </span>
+                </div>
         `;
     }
     
-    detailHtml += '</div>';
+    detailHtml += `
+            </div>
+        </div>
+    `;
     
-    showModal('日志详情', detailHtml, [
-        {
-            text: '关闭',
-            className: 'btn-secondary',
-            onClick: () => closeModal()
-        }
-    ]);
+    showModal('人机验证日志详情', detailHtml);
 }
 
 /**
