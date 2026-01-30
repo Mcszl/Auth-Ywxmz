@@ -6,8 +6,7 @@
     <title>用户登录 - 一碗小米周授权登录平台</title>
     <link rel="stylesheet" href="https://fa.2hs.cn/pro/7.0.0/css/all.css">
     <link rel="stylesheet" href="css/login.css">
-    <!-- 极验 V4 SDK -->
-    <script src="https://static.geetest.com/v4/gt4.js"></script>
+    <!-- 人机验证 SDK 将根据配置动态加载 -->
 </head>
 <body>
     <!-- 导航栏 -->
@@ -117,6 +116,9 @@
                         <a href="#" class="forgot-password">忘记密码？</a>
                     </div>
 
+                    <!-- 人机验证容器 -->
+                    <div id="captcha-container-password" style="margin-bottom: 1.25rem; display: flex; justify-content: center; align-items: center;"></div>
+
                     <div class="form-group">
                         <label class="agreement">
                             <input type="checkbox" id="agree-password" name="agree" required>
@@ -147,6 +149,9 @@
                             <button type="button" class="btn-code">获取验证码</button>
                         </div>
                     </div>
+
+                    <!-- 人机验证容器 -->
+                    <div id="captcha-container-code" style="margin-bottom: 1.25rem; display: flex; justify-content: center; align-items: center;"></div>
 
                     <div class="form-group">
                         <label class="agreement">
@@ -218,6 +223,6 @@
         </div>
     </div>
 
-    <script src="js/login.js"></script>
+    <script src="js/login.js?v=20260129"></script>
 </body>
 </html>

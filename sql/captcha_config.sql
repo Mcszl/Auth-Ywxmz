@@ -110,13 +110,13 @@ CREATE TABLE IF NOT EXISTS site_configs.captcha_verify_log (
     provider VARCHAR(50) NOT NULL,
     
     -- 极验相关字段
-    lot_number VARCHAR(255),
+    lot_number TEXT,
     captcha_output TEXT,
-    pass_token VARCHAR(255),
+    pass_token TEXT,
     gen_time VARCHAR(50),
     
     -- 通用字段
-    challenge VARCHAR(255),
+    challenge TEXT,
     validate VARCHAR(255),
     seccode TEXT,
     
@@ -136,10 +136,7 @@ CREATE TABLE IF NOT EXISTS site_configs.captcha_verify_log (
     
     -- 时间戳
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP,
-    
-    -- 索引
-    CONSTRAINT idx_lot_number UNIQUE (lot_number)
+    expires_at TIMESTAMP
 );
 
 -- 添加注释
@@ -148,11 +145,11 @@ COMMENT ON COLUMN site_configs.captcha_verify_log.id IS '主键ID';
 COMMENT ON COLUMN site_configs.captcha_verify_log.config_id IS '配置ID';
 COMMENT ON COLUMN site_configs.captcha_verify_log.scene IS '验证场景';
 COMMENT ON COLUMN site_configs.captcha_verify_log.provider IS '验证提供商';
-COMMENT ON COLUMN site_configs.captcha_verify_log.lot_number IS '极验流水号';
+COMMENT ON COLUMN site_configs.captcha_verify_log.lot_number IS '极验流水号（TEXT类型，支持长字符串）';
 COMMENT ON COLUMN site_configs.captcha_verify_log.captcha_output IS '极验输出';
-COMMENT ON COLUMN site_configs.captcha_verify_log.pass_token IS '极验通过令牌';
+COMMENT ON COLUMN site_configs.captcha_verify_log.pass_token IS '极验通过令牌（TEXT类型，支持长字符串）';
 COMMENT ON COLUMN site_configs.captcha_verify_log.gen_time IS '极验生成时间';
-COMMENT ON COLUMN site_configs.captcha_verify_log.challenge IS '挑战码';
+COMMENT ON COLUMN site_configs.captcha_verify_log.challenge IS '挑战码（Turnstile/reCAPTCHA/hCaptcha 的 token，TEXT类型支持长字符串）';
 COMMENT ON COLUMN site_configs.captcha_verify_log.validate IS '验证码';
 COMMENT ON COLUMN site_configs.captcha_verify_log.seccode IS '安全码';
 COMMENT ON COLUMN site_configs.captcha_verify_log.verify_success IS '验证是否成功';

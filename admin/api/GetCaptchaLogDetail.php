@@ -57,7 +57,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT 
             l.*,
-            c.config_name,
+            c.name as config_name,
             c.captcha_id,
             c.captcha_key
         FROM site_configs.captcha_verify_log l
