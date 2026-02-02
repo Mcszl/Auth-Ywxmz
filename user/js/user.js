@@ -707,9 +707,10 @@ async function updateNickname(nickname) {
                 showSuccessToast(result.message, '提交成功');
             } else {
                 showSuccessToast('昵称修改成功', '修改成功');
-                // 更新用户信息
-                userInfo.nickname = result.data.nickname;
-                updateUserDisplay();
+                // 刷新页面以显示最新信息
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
             }
         } else {
             showError(result.message || '修改昵称失败');
@@ -973,9 +974,10 @@ async function updateAvatar(avatar) {
                 showSuccessToast(result.message, '提交成功');
             } else {
                 showSuccessToast('头像修改成功', '修改成功');
-                // 更新用户信息
-                userInfo.avatar = result.data.avatar;
-                updateUserDisplay();
+                // 刷新页面以显示最新信息
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
             }
         } else {
             showError(result.message || '修改头像失败');
@@ -1963,6 +1965,10 @@ function initSecurityPage() {
     if (userInfo) {
         const securityPhone = document.getElementById('security-phone');
         const securityEmail = document.getElementById('security-email');
+        const btnBindPhone = document.getElementById('btn-bind-phone');
+        const btnChangePhone = document.getElementById('btn-change-phone');
+        const btnBindEmail = document.getElementById('btn-bind-email');
+        const btnChangeEmail = document.getElementById('btn-change-email');
         
         if (securityPhone) {
             securityPhone.textContent = userInfo.phone || '未绑定';
@@ -1970,6 +1976,24 @@ function initSecurityPage() {
         
         if (securityEmail) {
             securityEmail.textContent = userInfo.email || '未绑定';
+        }
+        
+        // 根据是否绑定手机号显示对应的按钮
+        if (userInfo.phone && userInfo.phone.trim() !== '') {
+            if (btnChangePhone) btnChangePhone.style.display = 'inline-flex';
+            if (btnBindPhone) btnBindPhone.style.display = 'none';
+        } else {
+            if (btnChangePhone) btnChangePhone.style.display = 'none';
+            if (btnBindPhone) btnBindPhone.style.display = 'inline-flex';
+        }
+        
+        // 根据是否绑定邮箱显示对应的按钮
+        if (userInfo.email && userInfo.email.trim() !== '') {
+            if (btnChangeEmail) btnChangeEmail.style.display = 'inline-flex';
+            if (btnBindEmail) btnBindEmail.style.display = 'none';
+        } else {
+            if (btnChangeEmail) btnChangeEmail.style.display = 'none';
+            if (btnBindEmail) btnBindEmail.style.display = 'inline-flex';
         }
     }
 }
@@ -2004,3 +2028,1497 @@ initNavigation = function() {
         }, 500);
     }
 };
+
+
+/**
+ * ========================================
+ * 修改密码功能
+ * ========================================
+ */
+
+// 修改密码相关变量
+let changePasswordModal = null;
+let currentPasswordStep = 1;
+let selectedVerifyMethod = '';
+let verifyTarget = '';
+let passwordResetToken = '';
+let sendCodeCountdown = 0;
+let sendCodeTimer = null;
+
+/**
+ * 初始化修改密码功能
+ */
+function initChangePassword() {
+    changePasswordModal = document.getElementById('change-password-modal');
+    const btnChangePassword = document.getElementById('btn-change-password');
+    const btnCloseModal = document.getElementById('close-change-password-modal');
+
+    // 打开修改密码弹窗
+    if (btnChangePassword) {
+        btnChangePassword.addEventListener('click', openChangePasswordModal);
+    }
+
+    // 关闭弹窗
+    if (btnCloseModal) {
+        btnCloseModal.addEventListener('click', closeChangePasswordModal);
+    }
+
+    // 点击遮罩层关闭
+    if (changePasswordModal) {
+        changePasswordModal.addEventListener('click', function(e) {
+            if (e.target === changePasswordModal) {
+                closeChangePasswordModal();
+            }
+        });
+    }
+
+    // 第一步：选择验证方式
+    const btnSelectMethods = document.querySelectorAll('.btn-select-method');
+    btnSelectMethods.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const method = this.getAttribute('data-method');
+            selectVerifyMethod(method);
+        });
+    });
+
+    // 第二步：发送验证码
+    const btnSendCode = document.getElementById('btn-send-verify-code');
+    if (btnSendCode) {
+        btnSendCode.addEventListener('click', sendVerifyCode);
+    }
+
+    // 第二步：验证验证码
+    const btnVerifyCode = document.getElementById('btn-verify-code');
+    if (btnVerifyCode) {
+        btnVerifyCode.addEventListener('click', verifyCode);
+    }
+
+    // 第二步：返回上一步
+    const btnBackStep1 = document.getElementById('btn-back-step-1');
+    if (btnBackStep1) {
+        btnBackStep1.addEventListener('click', () => goToStep(1));
+    }
+
+    // 第三步：返回上一步
+    const btnBackStep2 = document.getElementById('btn-back-step-2');
+    if (btnBackStep2) {
+        btnBackStep2.addEventListener('click', () => goToStep(2));
+    }
+
+    // 第三步：提交修改
+    const btnSubmitPassword = document.getElementById('btn-submit-password');
+    if (btnSubmitPassword) {
+        btnSubmitPassword.addEventListener('click', submitPasswordChange);
+    }
+
+    // 密码强度检测
+    const newPasswordInput = document.getElementById('new-password');
+    if (newPasswordInput) {
+        newPasswordInput.addEventListener('input', checkPasswordStrength);
+    }
+
+    // 密码显示/隐藏切换
+    const btnTogglePasswords = document.querySelectorAll('.btn-toggle-password');
+    btnTogglePasswords.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            const icon = this.querySelector('i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+    });
+}
+
+/**
+ * 打开修改密码弹窗
+ */
+async function openChangePasswordModal() {
+    if (!userInfo) {
+        showError('请先登录');
+        return;
+    }
+
+    // 重置状态
+    currentPasswordStep = 1;
+    selectedVerifyMethod = '';
+    verifyTarget = '';
+    passwordResetToken = '';
+
+    // 检查用户绑定的联系方式
+    const hasPhone = userInfo.phone && userInfo.phone.trim() !== '';
+    const hasEmail = userInfo.email && userInfo.email.trim() !== '';
+
+    if (!hasPhone && !hasEmail) {
+        showError('您还未绑定手机号或邮箱，无法修改密码');
+        return;
+    }
+
+    // 显示可用的验证方式
+    const phoneMethod = document.getElementById('verify-method-phone');
+    const emailMethod = document.getElementById('verify-method-email');
+    const phoneDisplay = document.getElementById('verify-phone-display');
+    const emailDisplay = document.getElementById('verify-email-display');
+
+    if (hasPhone) {
+        phoneMethod.style.display = 'flex';
+        phoneDisplay.textContent = maskPhone(userInfo.phone);
+    } else {
+        phoneMethod.style.display = 'none';
+    }
+
+    if (hasEmail) {
+        emailMethod.style.display = 'flex';
+        emailDisplay.textContent = maskEmail(userInfo.email);
+    } else {
+        emailMethod.style.display = 'none';
+    }
+
+    // 显示弹窗
+    changePasswordModal.classList.add('show');
+    goToStep(1);
+}
+
+/**
+ * 关闭修改密码弹窗
+ */
+function closeChangePasswordModal() {
+    changePasswordModal.classList.remove('show');
+    
+    // 清理倒计时
+    if (sendCodeTimer) {
+        clearInterval(sendCodeTimer);
+        sendCodeTimer = null;
+    }
+    
+    // 重置表单
+    document.getElementById('verify-code').value = '';
+    document.getElementById('new-password').value = '';
+    document.getElementById('confirm-password').value = '';
+    
+    // 重置密码强度指示器
+    const strengthFill = document.getElementById('strength-fill');
+    const strengthText = document.getElementById('strength-text');
+    strengthFill.className = 'strength-fill';
+    strengthText.className = 'strength-text';
+    strengthText.textContent = '请输入密码';
+}
+
+/**
+ * 切换到指定步骤
+ */
+function goToStep(step) {
+    currentPasswordStep = step;
+
+    // 更新步骤指示器
+    const steps = document.querySelectorAll('.step');
+    steps.forEach((s, index) => {
+        const stepNum = index + 1;
+        if (stepNum < step) {
+            s.classList.add('completed');
+            s.classList.remove('active');
+        } else if (stepNum === step) {
+            s.classList.add('active');
+            s.classList.remove('completed');
+        } else {
+            s.classList.remove('active', 'completed');
+        }
+    });
+
+    // 显示对应的步骤内容
+    document.getElementById('password-step-1').style.display = step === 1 ? 'block' : 'none';
+    document.getElementById('password-step-2').style.display = step === 2 ? 'block' : 'none';
+    document.getElementById('password-step-3').style.display = step === 3 ? 'block' : 'none';
+}
+
+/**
+ * 选择验证方式
+ */
+function selectVerifyMethod(method) {
+    selectedVerifyMethod = method;
+
+    if (method === 'phone') {
+        verifyTarget = userInfo.phone;
+        document.getElementById('verify-icon-phone').style.display = 'inline';
+        document.getElementById('verify-icon-email').style.display = 'none';
+        document.getElementById('verify-target-label').textContent = '手机号';
+        document.getElementById('verify-target').value = maskPhone(userInfo.phone);
+    } else {
+        verifyTarget = userInfo.email;
+        document.getElementById('verify-icon-phone').style.display = 'none';
+        document.getElementById('verify-icon-email').style.display = 'inline';
+        document.getElementById('verify-target-label').textContent = '邮箱';
+        document.getElementById('verify-target').value = maskEmail(userInfo.email);
+    }
+
+    // 进入第二步
+    goToStep(2);
+}
+
+/**
+ * 发送验证码
+ */
+async function sendVerifyCode() {
+    const btnSendCode = document.getElementById('btn-send-verify-code');
+    
+    if (sendCodeCountdown > 0) {
+        return;
+    }
+
+    try {
+        btnSendCode.disabled = true;
+        btnSendCode.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发送中...';
+
+        const response = await fetch('/user/api/SendPasswordResetCode.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                method: selectedVerifyMethod
+            })
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            showError(result.message || '发送验证码失败');
+            btnSendCode.disabled = false;
+            btnSendCode.innerHTML = '<i class="fas fa-paper-plane"></i> <span>发送验证码</span>';
+            return;
+        }
+
+        showSuccessToast(result.message || '验证码已发送');
+
+        // 开始倒计时
+        sendCodeCountdown = 60;
+        btnSendCode.classList.add('counting');
+        updateSendCodeButton();
+
+        sendCodeTimer = setInterval(() => {
+            sendCodeCountdown--;
+            if (sendCodeCountdown <= 0) {
+                clearInterval(sendCodeTimer);
+                sendCodeTimer = null;
+                btnSendCode.disabled = false;
+                btnSendCode.classList.remove('counting');
+                btnSendCode.innerHTML = '<i class="fas fa-paper-plane"></i> <span>重新发送</span>';
+            } else {
+                updateSendCodeButton();
+            }
+        }, 1000);
+
+    } catch (error) {
+        console.error('发送验证码失败:', error);
+        showError('网络错误，请稍后重试');
+        btnSendCode.disabled = false;
+        btnSendCode.innerHTML = '<i class="fas fa-paper-plane"></i> <span>发送验证码</span>';
+    }
+}
+
+/**
+ * 更新发送验证码按钮文本
+ */
+function updateSendCodeButton() {
+    const btnSendCode = document.getElementById('btn-send-verify-code');
+    btnSendCode.innerHTML = `<i class="fas fa-clock"></i> <span>${sendCodeCountdown}秒后重试</span>`;
+}
+
+/**
+ * 验证验证码
+ */
+async function verifyCode() {
+    const code = document.getElementById('verify-code').value.trim();
+
+    if (!code) {
+        showError('请输入验证码');
+        return;
+    }
+
+    if (code.length !== 6) {
+        showError('验证码格式错误');
+        return;
+    }
+
+    const btnVerify = document.getElementById('btn-verify-code');
+
+    try {
+        btnVerify.disabled = true;
+        btnVerify.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 验证中...';
+
+        const response = await fetch('/user/api/VerifyPasswordResetCode.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                method: selectedVerifyMethod,
+                code: code
+            })
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            showError(result.message || '验证失败');
+            btnVerify.disabled = false;
+            btnVerify.innerHTML = '下一步 <i class="fas fa-arrow-right"></i>';
+            return;
+        }
+
+        // 保存令牌
+        passwordResetToken = result.data.token;
+
+        showSuccessToast('验证成功');
+
+        // 进入第三步
+        goToStep(3);
+
+        btnVerify.disabled = false;
+        btnVerify.innerHTML = '下一步 <i class="fas fa-arrow-right"></i>';
+
+    } catch (error) {
+        console.error('验证验证码失败:', error);
+        showError('网络错误，请稍后重试');
+        btnVerify.disabled = false;
+        btnVerify.innerHTML = '下一步 <i class="fas fa-arrow-right"></i>';
+    }
+}
+
+/**
+ * 检查密码强度
+ */
+function checkPasswordStrength() {
+    const password = document.getElementById('new-password').value;
+    const strengthFill = document.getElementById('strength-fill');
+    const strengthText = document.getElementById('strength-text');
+
+    if (!password) {
+        strengthFill.className = 'strength-fill';
+        strengthText.className = 'strength-text';
+        strengthText.textContent = '请输入密码';
+        return;
+    }
+
+    let strength = 0;
+    
+    // 长度检查
+    if (password.length >= 8) strength++;
+    if (password.length >= 12) strength++;
+    
+    // 包含数字
+    if (/\d/.test(password)) strength++;
+    
+    // 包含小写字母
+    if (/[a-z]/.test(password)) strength++;
+    
+    // 包含大写字母
+    if (/[A-Z]/.test(password)) strength++;
+    
+    // 包含特殊字符
+    if (/[^a-zA-Z0-9]/.test(password)) strength++;
+
+    if (strength <= 2) {
+        strengthFill.className = 'strength-fill weak';
+        strengthText.className = 'strength-text weak';
+        strengthText.textContent = '弱';
+    } else if (strength <= 4) {
+        strengthFill.className = 'strength-fill medium';
+        strengthText.className = 'strength-text medium';
+        strengthText.textContent = '中';
+    } else {
+        strengthFill.className = 'strength-fill strong';
+        strengthText.className = 'strength-text strong';
+        strengthText.textContent = '强';
+    }
+}
+
+/**
+ * 提交密码修改
+ */
+async function submitPasswordChange() {
+    const newPassword = document.getElementById('new-password').value.trim();
+    const confirmPassword = document.getElementById('confirm-password').value.trim();
+
+    // 验证输入
+    if (!newPassword) {
+        showError('请输入新密码');
+        return;
+    }
+
+    if (newPassword.length < 8 || newPassword.length > 20) {
+        showError('密码长度必须在8-20位之间');
+        return;
+    }
+
+    if (!confirmPassword) {
+        showError('请确认新密码');
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        showError('两次输入的密码不一致');
+        return;
+    }
+
+    if (!passwordResetToken) {
+        showError('令牌无效，请重新验证');
+        return;
+    }
+
+    const btnSubmit = document.getElementById('btn-submit-password');
+
+    try {
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中...';
+
+        const response = await fetch('/user/api/ResetPassword.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                token: passwordResetToken,
+                new_password: newPassword
+            })
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            showError(result.message || '修改密码失败');
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<i class="fas fa-check"></i> 提交修改';
+            return;
+        }
+
+        showSuccessToast('密码修改成功，请重新登录');
+
+        // 关闭弹窗
+        closeChangePasswordModal();
+
+        // 延迟跳转到登录页
+        setTimeout(() => {
+            window.location.href = '/user/login.php';
+        }, 2000);
+
+    } catch (error) {
+        console.error('修改密码失败:', error);
+        showError('网络错误，请稍后重试');
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = '<i class="fas fa-check"></i> 提交修改';
+    }
+}
+
+/**
+ * 掩码手机号
+ */
+function maskPhone(phone) {
+    if (!phone || phone.length < 11) return phone;
+    return phone.substring(0, 3) + '****' + phone.substring(7);
+}
+
+/**
+ * 掩码邮箱
+ */
+function maskEmail(email) {
+    if (!email) return email;
+    const atIndex = email.indexOf('@');
+    if (atIndex <= 0) return email;
+    const username = email.substring(0, atIndex);
+    const domain = email.substring(atIndex);
+    if (username.length <= 3) {
+        return username.substring(0, 1) + '***' + domain;
+    }
+    return username.substring(0, 3) + '***' + domain;
+}
+
+// 在页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    initChangePassword();
+    initChangePhone();
+    initChangeEmailModal();
+});
+
+
+// ==================== 修改手机号功能 ====================
+
+// 修改手机号相关变量
+let changePhoneModal = null;
+let currentPhoneStep = 1;
+let selectedPhoneVerifyMethod = '';
+let phoneVerifyTarget = '';
+let sendPhoneCodeTimer = null;
+let sendNewPhoneCodeTimer = null;
+
+/**
+ * 初始化修改手机号功能
+ */
+function initChangePhone() {
+    changePhoneModal = document.getElementById('change-phone-modal');
+    const btnChangePhone = document.getElementById('btn-change-phone');
+    const btnCloseModal = document.getElementById('close-change-phone-modal');
+
+    // 打开修改手机号弹窗
+    if (btnChangePhone) {
+        btnChangePhone.addEventListener('click', openChangePhoneModal);
+    }
+
+    // 关闭弹窗
+    if (btnCloseModal) {
+        btnCloseModal.addEventListener('click', closeChangePhoneModal);
+    }
+
+    // 点击遮罩层关闭
+    if (changePhoneModal) {
+        changePhoneModal.addEventListener('click', function(e) {
+            if (e.target === changePhoneModal) {
+                closeChangePhoneModal();
+            }
+        });
+    }
+
+    // 第一步：选择验证方式
+    const btnSelectMethods = document.querySelectorAll('#change-phone-modal .btn-select-method');
+    btnSelectMethods.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const method = this.getAttribute('data-method');
+            selectPhoneVerifyMethod(method);
+        });
+    });
+
+    // 第二步：发送旧手机号/邮箱验证码
+    const btnSendPhoneVerifyCode = document.getElementById('btn-send-phone-verify-code');
+    if (btnSendPhoneVerifyCode) {
+        btnSendPhoneVerifyCode.addEventListener('click', sendPhoneVerifyCode);
+    }
+
+    // 第二步：验证旧手机号/邮箱验证码
+    const btnPhoneVerifyCode = document.getElementById('btn-phone-verify-code');
+    if (btnPhoneVerifyCode) {
+        btnPhoneVerifyCode.addEventListener('click', verifyPhoneCode);
+    }
+
+    // 第二步：返回上一步
+    const btnPhoneBackStep1 = document.getElementById('btn-phone-back-step-1');
+    if (btnPhoneBackStep1) {
+        btnPhoneBackStep1.addEventListener('click', () => goToPhoneStep(1));
+    }
+
+    // 第三步：发送新手机号验证码
+    const btnSendNewPhoneCode = document.getElementById('btn-send-new-phone-code');
+    if (btnSendNewPhoneCode) {
+        btnSendNewPhoneCode.addEventListener('click', sendNewPhoneCode);
+    }
+
+    // 第三步：返回上一步
+    const btnPhoneBackStep2 = document.getElementById('btn-phone-back-step-2');
+    if (btnPhoneBackStep2) {
+        btnPhoneBackStep2.addEventListener('click', () => goToPhoneStep(2));
+    }
+
+    // 第三步：提交修改
+    const btnPhoneSubmit = document.getElementById('btn-phone-submit');
+    if (btnPhoneSubmit) {
+        btnPhoneSubmit.addEventListener('click', submitPhoneChange);
+    }
+
+    // 新手机号输入验证
+    const newPhoneInput = document.getElementById('new-phone');
+    if (newPhoneInput) {
+        newPhoneInput.addEventListener('input', function() {
+            // 只允许输入数字
+            this.value = this.value.replace(/\D/g, '');
+        });
+    }
+}
+
+/**
+ * 打开修改手机号弹窗
+ */
+async function openChangePhoneModal() {
+    if (!userInfo) {
+        showError('请先登录');
+        return;
+    }
+
+    // 检查是否已绑定手机号
+    if (!userInfo.phone || userInfo.phone.trim() === '') {
+        showError('您还未绑定手机号');
+        return;
+    }
+
+    // 重置状态
+    currentPhoneStep = 1;
+    selectedPhoneVerifyMethod = '';
+    phoneVerifyTarget = '';
+
+    // 检查用户绑定的联系方式
+    const hasPhone = userInfo.phone && userInfo.phone.trim() !== '';
+    const hasEmail = userInfo.email && userInfo.email.trim() !== '';
+
+    if (!hasPhone && !hasEmail) {
+        showError('您还未绑定手机号或邮箱，无法修改手机号');
+        return;
+    }
+
+    // 显示可用的验证方式
+    const phoneMethod = document.getElementById('phone-verify-method-phone');
+    const emailMethod = document.getElementById('phone-verify-method-email');
+    const phoneDisplay = document.getElementById('phone-verify-phone-display');
+    const emailDisplay = document.getElementById('phone-verify-email-display');
+
+    if (hasPhone) {
+        phoneMethod.style.display = 'flex';
+        phoneDisplay.textContent = maskPhone(userInfo.phone);
+    } else {
+        phoneMethod.style.display = 'none';
+    }
+
+    if (hasEmail) {
+        emailMethod.style.display = 'flex';
+        emailDisplay.textContent = maskEmail(userInfo.email);
+    } else {
+        emailMethod.style.display = 'none';
+    }
+
+    // 显示弹窗
+    changePhoneModal.classList.add('show');
+    goToPhoneStep(1);
+}
+
+/**
+ * 关闭修改手机号弹窗
+ */
+function closeChangePhoneModal() {
+    changePhoneModal.classList.remove('show');
+    
+    // 清理倒计时
+    if (sendPhoneCodeTimer) {
+        clearInterval(sendPhoneCodeTimer);
+        sendPhoneCodeTimer = null;
+    }
+    if (sendNewPhoneCodeTimer) {
+        clearInterval(sendNewPhoneCodeTimer);
+        sendNewPhoneCodeTimer = null;
+    }
+    
+    // 重置表单
+    document.getElementById('phone-verify-code').value = '';
+    document.getElementById('new-phone').value = '';
+    document.getElementById('new-phone-code').value = '';
+}
+
+/**
+ * 切换到指定步骤
+ */
+function goToPhoneStep(step) {
+    currentPhoneStep = step;
+
+    // 更新步骤指示器
+    const steps = document.querySelectorAll('#change-phone-modal .step');
+    steps.forEach((s, index) => {
+        const stepNum = index + 1;
+        if (stepNum < step) {
+            s.classList.add('completed');
+            s.classList.remove('active');
+        } else if (stepNum === step) {
+            s.classList.add('active');
+            s.classList.remove('completed');
+        } else {
+            s.classList.remove('active', 'completed');
+        }
+    });
+
+    // 显示/隐藏对应的步骤内容
+    document.querySelectorAll('.phone-step').forEach((stepDiv, index) => {
+        if (index + 1 === step) {
+            stepDiv.style.display = 'block';
+        } else {
+            stepDiv.style.display = 'none';
+        }
+    });
+}
+
+/**
+ * 选择验证方式
+ */
+function selectPhoneVerifyMethod(method) {
+    selectedPhoneVerifyMethod = method;
+    
+    if (method === 'phone') {
+        phoneVerifyTarget = userInfo.phone;
+    } else {
+        phoneVerifyTarget = userInfo.email;
+    }
+    
+    // 更新第二步的显示
+    const targetInput = document.getElementById('phone-verify-target');
+    const targetLabel = document.getElementById('phone-verify-target-label');
+    const iconPhone = document.getElementById('phone-verify-icon-phone');
+    const iconEmail = document.getElementById('phone-verify-icon-email');
+    
+    if (method === 'phone') {
+        targetInput.value = maskPhone(phoneVerifyTarget);
+        targetLabel.textContent = '手机号';
+        iconPhone.style.display = 'inline-block';
+        iconEmail.style.display = 'none';
+    } else {
+        targetInput.value = maskEmail(phoneVerifyTarget);
+        targetLabel.textContent = '邮箱地址';
+        iconPhone.style.display = 'none';
+        iconEmail.style.display = 'inline-block';
+    }
+    
+    // 切换到第二步
+    goToPhoneStep(2);
+}
+
+/**
+ * 发送旧手机号/邮箱验证码
+ */
+async function sendPhoneVerifyCode() {
+    const btn = document.getElementById('btn-send-phone-verify-code');
+    
+    if (btn.disabled) {
+        return;
+    }
+    
+    if (!selectedPhoneVerifyMethod) {
+        showError('请先选择验证方式');
+        return;
+    }
+    
+    // 禁用按钮
+    btn.disabled = true;
+    const originalText = btn.querySelector('span').textContent;
+    btn.querySelector('span').textContent = '发送中...';
+    
+    try {
+        const response = await fetch('/user/api/SendChangePhoneVerifyCode.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                method: selectedPhoneVerifyMethod
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccessToast(result.message);
+            
+            // 开始倒计时
+            let countdown = 60;
+            btn.querySelector('span').textContent = `${countdown}秒后重试`;
+            
+            sendPhoneCodeTimer = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    btn.querySelector('span').textContent = `${countdown}秒后重试`;
+                } else {
+                    clearInterval(sendPhoneCodeTimer);
+                    sendPhoneCodeTimer = null;
+                    btn.disabled = false;
+                    btn.querySelector('span').textContent = originalText;
+                }
+            }, 1000);
+        } else {
+            showError(result.message || '发送失败');
+            btn.disabled = false;
+            btn.querySelector('span').textContent = originalText;
+        }
+    } catch (error) {
+        console.error('发送验证码失败:', error);
+        showError('发送失败，请稍后重试');
+        btn.disabled = false;
+        btn.querySelector('span').textContent = originalText;
+    }
+}
+
+/**
+ * 验证旧手机号/邮箱验证码
+ */
+async function verifyPhoneCode() {
+    const code = document.getElementById('phone-verify-code').value.trim();
+    
+    if (!code) {
+        showError('请输入验证码');
+        return;
+    }
+    
+    if (code.length !== 6) {
+        showError('验证码格式不正确');
+        return;
+    }
+    
+    const btn = document.getElementById('btn-phone-verify-code');
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 验证中...';
+    
+    try {
+        const response = await fetch('/user/api/VerifyChangePhoneCode.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                method: selectedPhoneVerifyMethod,
+                code: code
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccessToast('验证成功');
+            // 切换到第三步
+            goToPhoneStep(3);
+        } else {
+            showError(result.message || '验证失败');
+        }
+    } catch (error) {
+        console.error('验证失败:', error);
+        showError('验证失败，请稍后重试');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+/**
+ * 发送新手机号验证码
+ */
+async function sendNewPhoneCode() {
+    const newPhone = document.getElementById('new-phone').value.trim();
+    const btn = document.getElementById('btn-send-new-phone-code');
+    
+    if (btn.disabled) {
+        return;
+    }
+    
+    if (!newPhone) {
+        showError('请输入新手机号');
+        return;
+    }
+    
+    if (!/^1[3-9]\d{9}$/.test(newPhone)) {
+        showError('手机号格式不正确');
+        return;
+    }
+    
+    // 检查是否与当前手机号相同
+    if (newPhone === userInfo.phone) {
+        showError('新手机号不能与当前手机号相同');
+        return;
+    }
+    
+    // 禁用按钮
+    btn.disabled = true;
+    const originalText = btn.querySelector('span').textContent;
+    btn.querySelector('span').textContent = '发送中...';
+    
+    try {
+        const response = await fetch('/user/api/SendNewPhoneCode.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                new_phone: newPhone
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccessToast(result.message);
+            
+            // 开始倒计时
+            let countdown = 60;
+            btn.querySelector('span').textContent = `${countdown}秒后重试`;
+            
+            sendNewPhoneCodeTimer = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    btn.querySelector('span').textContent = `${countdown}秒后重试`;
+                } else {
+                    clearInterval(sendNewPhoneCodeTimer);
+                    sendNewPhoneCodeTimer = null;
+                    btn.disabled = false;
+                    btn.querySelector('span').textContent = originalText;
+                }
+            }, 1000);
+        } else {
+            showError(result.message || '发送失败');
+            btn.disabled = false;
+            btn.querySelector('span').textContent = originalText;
+        }
+    } catch (error) {
+        console.error('发送验证码失败:', error);
+        showError('发送失败，请稍后重试');
+        btn.disabled = false;
+        btn.querySelector('span').textContent = originalText;
+    }
+}
+
+/**
+ * 提交修改手机号
+ */
+async function submitPhoneChange() {
+    const newPhone = document.getElementById('new-phone').value.trim();
+    const oldVerifyCode = document.getElementById('phone-verify-code').value.trim();
+    const newPhoneCode = document.getElementById('new-phone-code').value.trim();
+    
+    // 验证输入
+    if (!newPhone) {
+        showError('请输入新手机号');
+        return;
+    }
+    
+    if (!/^1[3-9]\d{9}$/.test(newPhone)) {
+        showError('手机号格式不正确');
+        return;
+    }
+    
+    if (!oldVerifyCode) {
+        showError('请输入旧手机号/邮箱验证码');
+        return;
+    }
+    
+    if (!newPhoneCode) {
+        showError('请输入新手机号验证码');
+        return;
+    }
+    
+    if (newPhoneCode.length !== 6) {
+        showError('验证码格式不正确');
+        return;
+    }
+    
+    const btn = document.getElementById('btn-phone-submit');
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中...';
+    
+    try {
+        const response = await fetch('/user/api/ChangePhone.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                new_phone: newPhone,
+                old_verify_code: oldVerifyCode,
+                new_phone_code: newPhoneCode
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccessToast('手机号修改成功');
+            
+            // 关闭弹窗
+            closeChangePhoneModal();
+            
+            // 刷新页面以显示最新信息
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showError(result.message || '修改失败');
+        }
+    } catch (error) {
+        console.error('修改失败:', error);
+        showError('修改失败，请稍后重试');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+
+// ==================== 修改邮箱功能 ====================
+
+// 修改邮箱相关变量
+let changeEmailModal = null;
+let currentEmailStep = 1;
+let selectedEmailVerifyMethod = null;
+let emailVerifyTarget = null;
+let sendEmailCodeTimer = null;
+let sendNewEmailCodeTimer = null;
+
+/**
+ * 初始化修改邮箱弹窗
+ */
+function initChangeEmailModal() {
+    changeEmailModal = document.getElementById('change-email-modal');
+    
+    if (!changeEmailModal) {
+        console.error('修改邮箱弹窗元素不存在');
+        return;
+    }
+    
+    // 修改邮箱按钮
+    const btnChangeEmail = document.getElementById('btn-change-email');
+    if (btnChangeEmail) {
+        btnChangeEmail.addEventListener('click', openChangeEmailModal);
+    }
+    
+    // 关闭按钮
+    document.getElementById('close-change-email-modal').addEventListener('click', closeChangeEmailModal);
+    
+    // 选择验证方式按钮
+    document.querySelectorAll('#change-email-modal .btn-select-method').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const method = this.getAttribute('data-method');
+            selectEmailVerifyMethod(method);
+        });
+    });
+    
+    // 发送旧手机号/邮箱验证码
+    document.getElementById('btn-send-email-verify-code').addEventListener('click', sendEmailVerifyCode);
+    
+    // 验证旧手机号/邮箱验证码
+    document.getElementById('btn-email-verify-code').addEventListener('click', verifyEmailCode);
+    
+    // 发送新邮箱验证码
+    document.getElementById('btn-send-new-email-code').addEventListener('click', sendNewEmailCode);
+    
+    // 提交修改
+    document.getElementById('btn-email-submit').addEventListener('click', submitEmailChange);
+    
+    // 返回按钮
+    document.getElementById('btn-email-back-step-1').addEventListener('click', () => goToEmailStep(1));
+    document.getElementById('btn-email-back-step-2').addEventListener('click', () => goToEmailStep(2));
+    
+    // 点击遮罩层关闭
+    changeEmailModal.addEventListener('click', function(e) {
+        if (e.target === changeEmailModal) {
+            closeChangeEmailModal();
+        }
+    });
+}
+
+/**
+ * 打开修改邮箱弹窗
+ */
+function openChangeEmailModal() {
+    if (!userInfo) {
+        showError('请先登录');
+        return;
+    }
+    
+    // 重置状态
+    currentEmailStep = 1;
+    selectedEmailVerifyMethod = null;
+    emailVerifyTarget = null;
+    
+    // 清空输入框
+    document.getElementById('email-verify-code').value = '';
+    document.getElementById('new-email').value = '';
+    document.getElementById('new-email-code').value = '';
+    
+    // 显示可用的验证方式
+    const phoneMethod = document.getElementById('email-verify-method-phone');
+    const emailMethod = document.getElementById('email-verify-method-email');
+    
+    if (userInfo.phone) {
+        phoneMethod.style.display = 'flex';
+        document.getElementById('email-verify-phone-display').textContent = maskPhone(userInfo.phone);
+    } else {
+        phoneMethod.style.display = 'none';
+    }
+    
+    if (userInfo.email) {
+        emailMethod.style.display = 'flex';
+        document.getElementById('email-verify-email-display').textContent = maskEmail(userInfo.email);
+    } else {
+        emailMethod.style.display = 'none';
+    }
+    
+    // 检查是否有可用的验证方式
+    if (!userInfo.phone && !userInfo.email) {
+        showError('您还没有绑定手机号或邮箱，无法修改邮箱');
+        return;
+    }
+    
+    // 切换到第一步
+    goToEmailStep(1);
+    
+    // 显示弹窗
+    changeEmailModal.classList.add('show');
+}
+
+/**
+ * 关闭修改邮箱弹窗
+ */
+function closeChangeEmailModal() {
+    changeEmailModal.classList.remove('show');
+    
+    // 清理倒计时
+    if (sendEmailCodeTimer) {
+        clearInterval(sendEmailCodeTimer);
+        sendEmailCodeTimer = null;
+    }
+    if (sendNewEmailCodeTimer) {
+        clearInterval(sendNewEmailCodeTimer);
+        sendNewEmailCodeTimer = null;
+    }
+    
+    // 重置表单
+    document.getElementById('email-verify-code').value = '';
+    document.getElementById('new-email').value = '';
+    document.getElementById('new-email-code').value = '';
+}
+
+/**
+ * 切换到指定步骤
+ */
+function goToEmailStep(step) {
+    currentEmailStep = step;
+
+    // 更新步骤指示器
+    const steps = document.querySelectorAll('#change-email-modal .step');
+    steps.forEach((s, index) => {
+        const stepNum = index + 1;
+        if (stepNum < step) {
+            s.classList.add('completed');
+            s.classList.remove('active');
+        } else if (stepNum === step) {
+            s.classList.add('active');
+            s.classList.remove('completed');
+        } else {
+            s.classList.remove('active', 'completed');
+        }
+    });
+
+    // 显示/隐藏对应的步骤内容
+    document.querySelectorAll('.email-step').forEach((stepDiv, index) => {
+        if (index + 1 === step) {
+            stepDiv.style.display = 'block';
+        } else {
+            stepDiv.style.display = 'none';
+        }
+    });
+}
+
+/**
+ * 选择验证方式
+ */
+function selectEmailVerifyMethod(method) {
+    selectedEmailVerifyMethod = method;
+    
+    if (method === 'phone') {
+        emailVerifyTarget = userInfo.phone;
+    } else {
+        emailVerifyTarget = userInfo.email;
+    }
+    
+    // 更新第二步的显示
+    const targetInput = document.getElementById('email-verify-target');
+    const targetLabel = document.getElementById('email-verify-target-label');
+    const iconPhone = document.getElementById('email-verify-icon-phone');
+    const iconEmail = document.getElementById('email-verify-icon-email');
+    
+    if (method === 'phone') {
+        targetInput.value = maskPhone(emailVerifyTarget);
+        targetLabel.textContent = '手机号';
+        iconPhone.style.display = 'inline-block';
+        iconEmail.style.display = 'none';
+    } else {
+        targetInput.value = maskEmail(emailVerifyTarget);
+        targetLabel.textContent = '邮箱地址';
+        iconPhone.style.display = 'none';
+        iconEmail.style.display = 'inline-block';
+    }
+    
+    // 切换到第二步
+    goToEmailStep(2);
+}
+
+/**
+ * 发送旧手机号/邮箱验证码
+ */
+async function sendEmailVerifyCode() {
+    const btn = document.getElementById('btn-send-email-verify-code');
+    
+    if (btn.disabled) {
+        return;
+    }
+    
+    if (!selectedEmailVerifyMethod) {
+        showError('请先选择验证方式');
+        return;
+    }
+    
+    // 禁用按钮
+    btn.disabled = true;
+    const originalText = btn.querySelector('span').textContent;
+    btn.querySelector('span').textContent = '发送中...';
+    
+    try {
+        const response = await fetch('/user/api/SendChangeEmailVerifyCode.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                method: selectedEmailVerifyMethod
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccessToast(result.message);
+            
+            // 开始倒计时
+            let countdown = 60;
+            btn.querySelector('span').textContent = `${countdown}秒后重试`;
+            
+            sendEmailCodeTimer = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    btn.querySelector('span').textContent = `${countdown}秒后重试`;
+                } else {
+                    clearInterval(sendEmailCodeTimer);
+                    sendEmailCodeTimer = null;
+                    btn.disabled = false;
+                    btn.querySelector('span').textContent = originalText;
+                }
+            }, 1000);
+        } else {
+            showError(result.message || '发送失败');
+            btn.disabled = false;
+            btn.querySelector('span').textContent = originalText;
+        }
+    } catch (error) {
+        console.error('发送验证码失败:', error);
+        showError('发送失败，请稍后重试');
+        btn.disabled = false;
+        btn.querySelector('span').textContent = originalText;
+    }
+}
+
+/**
+ * 验证旧手机号/邮箱验证码
+ */
+async function verifyEmailCode() {
+    const code = document.getElementById('email-verify-code').value.trim();
+    
+    if (!code) {
+        showError('请输入验证码');
+        return;
+    }
+    
+    if (code.length !== 6) {
+        showError('验证码格式不正确');
+        return;
+    }
+    
+    const btn = document.getElementById('btn-email-verify-code');
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 验证中...';
+    
+    try {
+        const response = await fetch('/user/api/VerifyChangeEmailCode.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                method: selectedEmailVerifyMethod,
+                code: code
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccessToast('验证成功');
+            // 切换到第三步
+            goToEmailStep(3);
+        } else {
+            showError(result.message || '验证失败');
+        }
+    } catch (error) {
+        console.error('验证失败:', error);
+        showError('验证失败，请稍后重试');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
+/**
+ * 发送新邮箱验证码
+ */
+async function sendNewEmailCode() {
+    const newEmail = document.getElementById('new-email').value.trim();
+    const btn = document.getElementById('btn-send-new-email-code');
+    
+    if (btn.disabled) {
+        return;
+    }
+    
+    if (!newEmail) {
+        showError('请输入新邮箱地址');
+        return;
+    }
+    
+    // 验证邮箱格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+        showError('邮箱格式不正确');
+        return;
+    }
+    
+    // 检查是否与当前邮箱相同
+    if (newEmail === userInfo.email) {
+        showError('新邮箱不能与当前邮箱相同');
+        return;
+    }
+    
+    // 禁用按钮
+    btn.disabled = true;
+    const originalText = btn.querySelector('span').textContent;
+    btn.querySelector('span').textContent = '发送中...';
+    
+    try {
+        const response = await fetch('/user/api/SendNewEmailCode.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                new_email: newEmail
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccessToast(result.message);
+            
+            // 开始倒计时
+            let countdown = 60;
+            btn.querySelector('span').textContent = `${countdown}秒后重试`;
+            
+            sendNewEmailCodeTimer = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    btn.querySelector('span').textContent = `${countdown}秒后重试`;
+                } else {
+                    clearInterval(sendNewEmailCodeTimer);
+                    sendNewEmailCodeTimer = null;
+                    btn.disabled = false;
+                    btn.querySelector('span').textContent = originalText;
+                }
+            }, 1000);
+        } else {
+            showError(result.message || '发送失败');
+            btn.disabled = false;
+            btn.querySelector('span').textContent = originalText;
+        }
+    } catch (error) {
+        console.error('发送验证码失败:', error);
+        showError('发送失败，请稍后重试');
+        btn.disabled = false;
+        btn.querySelector('span').textContent = originalText;
+    }
+}
+
+/**
+ * 提交修改邮箱
+ */
+async function submitEmailChange() {
+    const newEmail = document.getElementById('new-email').value.trim();
+    const oldVerifyCode = document.getElementById('email-verify-code').value.trim();
+    const newEmailCode = document.getElementById('new-email-code').value.trim();
+    
+    // 验证输入
+    if (!newEmail) {
+        showError('请输入新邮箱地址');
+        return;
+    }
+    
+    // 验证邮箱格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+        showError('邮箱格式不正确');
+        return;
+    }
+    
+    if (!oldVerifyCode) {
+        showError('请输入旧手机号/邮箱验证码');
+        return;
+    }
+    
+    if (!newEmailCode) {
+        showError('请输入新邮箱验证码');
+        return;
+    }
+    
+    if (newEmailCode.length !== 6) {
+        showError('验证码格式不正确');
+        return;
+    }
+    
+    const btn = document.getElementById('btn-email-submit');
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提交中...';
+    
+    try {
+        const response = await fetch('/user/api/ChangeEmail.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                new_email: newEmail,
+                old_verify_code: oldVerifyCode,
+                new_email_code: newEmailCode
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showSuccessToast('邮箱修改成功');
+            
+            // 关闭弹窗
+            closeChangeEmailModal();
+            
+            // 刷新页面以显示最新信息
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showError(result.message || '修改失败');
+        }
+    } catch (error) {
+        console.error('修改失败:', error);
+        showError('修改失败，请稍后重试');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}

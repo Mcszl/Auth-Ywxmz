@@ -201,17 +201,39 @@ class MailService
             // 获取邮件模板
             $template = $this->getMailTemplate($templateCode);
             if (!$template) {
-                $this->logger->error('邮件模板不存在', 'mail', [
-                    'template_code' => $templateCode,
-                    'to' => $to
-                ]);
-                return [
-                    'success' => false,
-                    'message' => '邮件模板不存在'
-                ];
+                // 检查模板是否存在但未启用
+                $stmt = $this->pdo->prepare("
+                    SELECT scene FROM site_configs.email_template
+                    WHERE template_code = :template_code
+                    LIMIT 1
+                ");
+                $stmt->execute(['template_code' => $templateCode]);
+                $existingTemplate = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($existingTemplate) {
+                    $scene = $existingTemplate['scene'];
+                    $this->logger->warning('邮件模板未启用', 'mail', [
+                        'template_code' => $templateCode,
+                        'scene' => $scene,
+                        'to' => $to
+                    ]);
+                    return [
+                        'success' => false,
+                        'message' => "该场景暂无可用的邮件模板，请联系管理员配置"
+                    ];
+                } else {
+                    $this->logger->error('邮件模板不存在', 'mail', [
+                        'template_code' => $templateCode,
+                        'to' => $to
+                    ]);
+                    return [
+                        'success' => false,
+                        'message' => "该场景暂无可用的邮件模板，请联系管理员配置"
+                    ];
+                }
             }
             
-            // 检查模板是否启用
+            // 检查模板是否启用（双重检查）
             if (!$template['is_enabled'] || $template['status'] != 1) {
                 $this->logger->warning('邮件模板未启用', 'mail', [
                     'template_id' => $template['id'],
@@ -219,7 +241,7 @@ class MailService
                 ]);
                 return [
                     'success' => false,
-                    'message' => '邮件模板未启用'
+                    'message' => "该场景暂无可用的邮件模板，请联系管理员配置"
                 ];
             }
             
@@ -364,7 +386,9 @@ class MailService
         $templateMap = [
             'register' => 'REGISTER_CODE',
             'login' => 'LOGIN_CODE',
-            'reset_password' => 'RESET_PASSWORD_CODE'
+            'reset_password' => 'RESET_PASSWORD_CODE',
+            'change_phone' => 'CHANGE_PHONE_CODE',
+            'change_email' => 'CHANGE_EMAIL_CODE'
         ];
         
         $templateCode = $templateMap[$scene] ?? 'REGISTER_CODE';

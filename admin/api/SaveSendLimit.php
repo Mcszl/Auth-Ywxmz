@@ -56,7 +56,8 @@ try {
     $limitType = trim($data['limit_type']);
     $timeWindow = intval($data['time_window']);
     $maxCount = intval($data['max_count']);
-    $isEnabled = isset($data['is_enabled']) ? ($data['is_enabled'] ? true : false) : true;
+    // 确保 is_enabled 是布尔值
+    $isEnabled = isset($data['is_enabled']) && $data['is_enabled'] !== '' && $data['is_enabled'] !== false && $data['is_enabled'] !== '0';
     $priority = isset($data['priority']) ? intval($data['priority']) : 100;
     $description = isset($data['description']) ? trim($data['description']) : '';
     
@@ -117,7 +118,7 @@ try {
             ':limit_type' => $limitType,
             ':time_window' => $timeWindow,
             ':max_count' => $maxCount,
-            ':is_enabled' => $isEnabled,
+            ':is_enabled' => $isEnabled ? 'true' : 'false',  // PostgreSQL 布尔值
             ':priority' => $priority,
             ':description' => $description
         ]);
@@ -174,7 +175,7 @@ try {
             ':limit_type' => $limitType,
             ':time_window' => $timeWindow,
             ':max_count' => $maxCount,
-            ':is_enabled' => $isEnabled,
+            ':is_enabled' => $isEnabled ? 'true' : 'false',  // PostgreSQL 布尔值
             ':priority' => $priority,
             ':description' => $description
         ]);

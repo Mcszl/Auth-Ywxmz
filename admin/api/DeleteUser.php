@@ -76,7 +76,8 @@ try {
     require_once __DIR__ . '/AdminAuthHelper.php';
     $admin = AdminAuthHelper::checkAdminPermission($pdo, 'jsonResponse');
     
-    $isSuperAdmin = ($admin['id'] == 1);
+    // 判断是否是超级管理员（ID为1）
+    $isSuperAdmin = (isset($admin['id']) && $admin['id'] == 1);
     
     // 检查目标用户是否存在
     $stmt = $pdo->prepare("
@@ -101,6 +102,7 @@ try {
         jsonResponse(false, null, '不能删除自己', 400);
     }
     
+    // 只有超级管理员（ID=1）可以删除其他管理员
     // 普通管理员不能删除其他管理员
     if (!$isSuperAdmin && in_array($targetUser['user_type'], ['admin', 'siteadmin'])) {
         jsonResponse(false, null, '无权删除管理员账户', 403);
@@ -124,7 +126,7 @@ try {
         // 记录日志
         $logger->info('admin', '管理员删除用户', [
             'admin' => $admin['username'],
-            'admin_id' => $admin['id'],
+            'admin_id' => isset($admin['id']) ? $admin['id'] : null,
             'target_user' => $targetUser['username'],
             'target_uuid' => $userUuid,
             'target_type' => $targetUser['user_type']

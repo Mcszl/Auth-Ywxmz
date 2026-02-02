@@ -22,6 +22,9 @@ async function init() {
     // 更新注册链接，保留参数
     updateRegisterLink();
     
+    // 更新忘记密码链接，保留参数
+    updateForgotPasswordLink();
+    
     // 验证应用配置
     await verifyAppConfig();
     
@@ -57,6 +60,17 @@ function updateRegisterLink() {
     if (registerLink && urlParams.toString()) {
         registerLink.href = `../register?${urlParams.toString()}`;
         //console.log('注册链接已更新:', registerLink.href);
+    }
+}
+
+/**
+ * 更新忘记密码链接，保留URL参数
+ */
+function updateForgotPasswordLink() {
+    const forgotPasswordLink = document.querySelector('.forgot-password');
+    if (forgotPasswordLink && urlParams.toString()) {
+        forgotPasswordLink.href = `../user/forgot-password.html?${urlParams.toString()}`;
+        //console.log('忘记密码链接已更新:', forgotPasswordLink.href);
     }
 }
 

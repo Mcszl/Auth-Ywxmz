@@ -654,7 +654,7 @@ body {
     position: fixed;
     top: 80px;
     right: 20px;
-    z-index: 9999;
+    z-index: 10001;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -1542,4 +1542,500 @@ body {
     font-size: 14px;
     color: #999;
     margin: 0;
+}
+
+
+/* ========================================
+ * 修改密码弹窗样式
+ * ======================================== */
+
+.change-password-modal {
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.change-password-modal .modal-header {
+    position: relative;
+    padding-right: 50px;
+}
+
+.modal-close {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #999;
+    cursor: pointer;
+    transition: color 0.3s;
+    padding: 5px;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #333;
+}
+
+/* 步骤指示器 */
+.steps-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 30px;
+    padding: 0 20px;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #f0f0f0;
+    color: #999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s;
+}
+
+.step.active .step-number {
+    background: linear-gradient(135deg, #5b9bd5 0%, #4a8bc2 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(91, 155, 213, 0.4);
+}
+
+.step.completed .step-number {
+    background: #52c41a;
+    color: white;
+}
+
+.step-label {
+    font-size: 13px;
+    color: #999;
+    white-space: nowrap;
+}
+
+.step.active .step-label {
+    color: #333;
+    font-weight: 500;
+}
+
+.step-line {
+    flex: 1;
+    height: 2px;
+    background: #e0e0e0;
+    margin: 0 10px;
+    position: relative;
+    top: -15px;
+}
+
+/* 步骤内容 */
+.password-step {
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.step-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 20px;
+}
+
+.step-title i {
+    color: #5b9bd5;
+}
+
+/* 验证方式选择 */
+.verify-methods {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.verify-method {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.verify-method:hover {
+    border-color: #5b9bd5;
+    background: #f0f7ff;
+}
+
+.method-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #5b9bd5 0%, #4a8bc2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+}
+
+.method-info {
+    flex: 1;
+}
+
+.method-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.method-desc {
+    font-size: 14px;
+    color: #666;
+}
+
+.btn-select-method {
+    padding: 8px 20px;
+    background: linear-gradient(135deg, #5b9bd5 0%, #4a8bc2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-select-method:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(91, 155, 213, 0.4);
+}
+
+.step-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 15px;
+    background: #f0f7ff;
+    border-left: 3px solid #5b9bd5;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #666;
+}
+
+.step-hint i {
+    color: #5b9bd5;
+}
+
+/* 验证表单 */
+.verify-form,
+.password-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-label i {
+    color: #5b9bd5;
+}
+
+.form-input {
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #5b9bd5;
+    box-shadow: 0 0 0 3px rgba(91, 155, 213, 0.1);
+}
+
+.form-input:read-only {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.captcha-container {
+    min-height: 80px;
+}
+
+.code-input-group {
+    display: flex;
+    gap: 10px;
+}
+
+.code-input-group .form-input {
+    flex: 1;
+}
+
+.btn-send-code {
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #5b9bd5 0%, #4a8bc2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-send-code:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(91, 155, 213, 0.4);
+}
+
+.btn-send-code:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.btn-send-code.counting {
+    background: #999;
+}
+
+/* 密码输入组 */
+.password-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-group .form-input {
+    flex: 1;
+    padding-right: 45px;
+}
+
+.btn-toggle-password {
+    position: absolute;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #999;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 8px;
+    transition: color 0.3s;
+}
+
+.btn-toggle-password:hover {
+    color: #5b9bd5;
+}
+
+/* 密码强度指示器 */
+.password-strength {
+    margin-top: 8px;
+}
+
+.strength-bar {
+    height: 4px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.strength-fill {
+    height: 100%;
+    width: 0;
+    transition: all 0.3s;
+    border-radius: 2px;
+}
+
+.strength-fill.weak {
+    width: 33%;
+    background: #ff4d4f;
+}
+
+.strength-fill.medium {
+    width: 66%;
+    background: #faad14;
+}
+
+.strength-fill.strong {
+    width: 100%;
+    background: #52c41a;
+}
+
+.strength-text {
+    font-size: 12px;
+    color: #999;
+}
+
+.strength-text.weak {
+    color: #ff4d4f;
+}
+
+.strength-text.medium {
+    color: #faad14;
+}
+
+.strength-text.strong {
+    color: #52c41a;
+}
+
+.form-hint {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #999;
+    margin-top: 5px;
+}
+
+.form-hint i {
+    color: #5b9bd5;
+}
+
+/* 步骤操作按钮 */
+.step-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.btn-secondary,
+.btn-primary {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-secondary {
+    background: #f0f0f0;
+    color: #666;
+}
+
+.btn-secondary:hover {
+    background: #e0e0e0;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #5b9bd5 0%, #4a8bc2 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(91, 155, 213, 0.4);
+}
+
+.btn-primary:disabled,
+.btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .change-password-modal {
+        max-width: 95%;
+        margin: 20px;
+    }
+
+    .steps-indicator {
+        padding: 0 10px;
+    }
+
+    .step-label {
+        font-size: 11px;
+    }
+
+    .step-number {
+        width: 35px;
+        height: 35px;
+        font-size: 14px;
+    }
+
+    .verify-method {
+        padding: 15px;
+    }
+
+    .method-icon {
+        width: 45px;
+        height: 45px;
+        font-size: 20px;
+    }
+
+    .code-input-group {
+        flex-direction: column;
+    }
+
+    .btn-send-code {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .step-actions {
+        flex-direction: column-reverse;
+    }
+
+    .btn-secondary,
+    .btn-primary {
+        width: 100%;
+        justify-content: center;
+    }
 }

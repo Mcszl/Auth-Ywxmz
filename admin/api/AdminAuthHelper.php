@@ -26,7 +26,7 @@ class AdminAuthHelper {
         
         try {
             $stmt = $pdo->prepare("
-                SELECT uuid, username, user_type, status 
+                SELECT id, uuid, username, user_type, status 
                 FROM users.user 
                 WHERE uuid = :uuid
             ");

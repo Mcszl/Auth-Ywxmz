@@ -49,16 +49,39 @@ class SmsService {
      */
     public function getSmsConfig($purpose) {
         try {
+            // 支持多种 purpose 格式（兼容不同的命名方式）
+            $purposeVariants = [$purpose];
+            
+            // 为常见的 purpose 添加变体
+            if ($purpose === 'password_reset') {
+                $purposeVariants[] = 'reset_password';
+                $purposeVariants[] = '重置密码';
+            } elseif ($purpose === 'reset_password') {
+                $purposeVariants[] = 'password_reset';
+                $purposeVariants[] = '重置密码';
+            } elseif ($purpose === 'login') {
+                $purposeVariants[] = '登录';
+            } elseif ($purpose === 'register') {
+                $purposeVariants[] = '注册';
+            } elseif ($purpose === 'change_phone') {
+                $purposeVariants[] = '修改手机号';
+            } elseif ($purpose === 'change_email') {
+                $purposeVariants[] = '修改邮箱';
+            }
+            
+            // 构建 IN 查询
+            $placeholders = implode(',', array_fill(0, count($purposeVariants), '?'));
+            
             $stmt = $this->pdo->prepare("
                 SELECT * FROM site_configs.sms_config 
-                WHERE purpose = :purpose 
+                WHERE purpose IN ($placeholders)
                 AND is_enabled = TRUE 
                 AND status = 1
                 AND daily_sent_count < daily_limit
                 ORDER BY priority ASC
                 LIMIT 1
             ");
-            $stmt->execute(['purpose' => $purpose]);
+            $stmt->execute($purposeVariants);
             return $stmt->fetch();
         } catch (PDOException $e) {
             error_log("获取短信配置失败: " . $e->getMessage());
@@ -71,18 +94,51 @@ class SmsService {
      */
     public function checkRateLimit($phone, $purpose, $limitSeconds = 60) {
         try {
+            // 支持多种 purpose 格式（兼容不同的命名方式）
+            $purposeVariants = [$purpose];
+            
+            // 为常见的 purpose 添加变体
+            if ($purpose === 'password_reset') {
+                $purposeVariants[] = 'reset_password';
+                $purposeVariants[] = '重置密码';
+            } elseif ($purpose === 'reset_password') {
+                $purposeVariants[] = 'password_reset';
+                $purposeVariants[] = '重置密码';
+            } elseif ($purpose === 'login') {
+                $purposeVariants[] = '登录';
+            } elseif ($purpose === 'register') {
+                $purposeVariants[] = '注册';
+            } elseif ($purpose === 'change_phone') {
+                $purposeVariants[] = '修改手机号';
+            } elseif ($purpose === 'change_email') {
+                $purposeVariants[] = '修改邮箱';
+            }
+            
+            // 构建 IN 查询
+            $placeholders = implode(',', array_fill(0, count($purposeVariants), '?'));
+            
             $stmt = $this->pdo->prepare("
                 SELECT COUNT(*) as count 
                 FROM sms.code 
                 WHERE phone = :phone 
-                AND purpose = :purpose 
+                AND purpose IN ($placeholders)
                 AND created_at > CURRENT_TIMESTAMP - INTERVAL '1 second' * :limit
             ");
-            $stmt->execute([
-                'phone' => $phone,
-                'purpose' => $purpose,
-                'limit' => $limitSeconds
-            ]);
+            
+            // 绑定参数
+            $params = array_merge(
+                ['phone' => $phone],
+                $purposeVariants,
+                ['limit' => $limitSeconds]
+            );
+            
+            // 使用位置参数绑定
+            $stmt->execute(array_merge(
+                [$phone],
+                $purposeVariants,
+                [$limitSeconds]
+            ));
+            
             $result = $stmt->fetch();
             return $result['count'] > 0;
         } catch (PDOException $e) {
@@ -653,8 +709,16 @@ class SmsService {
      * 发送验证码（通用方法）
      */
     public function sendVerificationCode($phone, $purpose, $validityPeriod = 900, $clientIp = null) {
-        // 检查发送频率限制
+        // 检查发送频率限制（简单的 60 秒限制）
         if ($this->checkRateLimit($phone, $purpose, 60)) {
+            // 记录触发频率限制的日志
+            error_log("SmsService 内部频率限制触发: " . json_encode([
+                'phone' => $phone,
+                'purpose' => $purpose,
+                'limit_type' => 'internal_60s_limit',
+                'message' => '60秒内已发送过验证码'
+            ], JSON_UNESCAPED_UNICODE));
+            
             return [
                 'success' => false,
                 'message' => '发送过于频繁，请稍后再试'

@@ -85,6 +85,9 @@ try {
         'register' => '注册',
         'login' => '登录',
         'reset_password' => '重置密码',
+        'password_reset' => '重置密码',
+        'change_email' => '修改邮箱',
+        'change_phone' => '修改手机号',
         'security_alert' => '安全警报',
         'welcome' => '欢迎邮件'
     ];

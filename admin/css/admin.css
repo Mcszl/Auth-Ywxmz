@@ -787,6 +787,10 @@ body {
 
 /* 空状态 */
 .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     padding: 80px 20px;
     color: #95a5a6;
@@ -3028,6 +3032,10 @@ textarea.form-control {
 
 /* 空状态优化 */
 .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     padding: 60px 20px;
     color: #95a5a6;
@@ -3731,4 +3739,181 @@ code {
     font-family: 'Courier New', monospace;
     font-size: 12px;
     color: #e91e63;
+}
+
+/* 第三方绑定样式 */
+#third-party-bindings-container {
+    margin-top: 10px;
+}
+
+.no-bindings {
+    text-align: center;
+    padding: 40px 20px;
+    color: #999;
+}
+
+.no-bindings i {
+    font-size: 48px;
+    color: #ddd;
+    margin-bottom: 10px;
+}
+
+.no-bindings p {
+    font-size: 14px;
+    margin: 0;
+}
+
+.bindings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.binding-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.binding-item:hover {
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-color: #1976d2;
+}
+
+.binding-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    flex-shrink: 0;
+    position: relative;
+}
+
+.binding-icon img {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.binding-icon i {
+    font-size: 24px;
+    color: #1976d2;
+}
+
+.binding-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.binding-app-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.binding-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 8px;
+}
+
+.binding-nickname,
+.binding-openid {
+    font-size: 13px;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.binding-nickname i,
+.binding-openid i {
+    color: #999;
+    font-size: 12px;
+}
+
+.binding-openid {
+    font-family: 'Courier New', monospace;
+    background: #f0f0f0;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.binding-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
+}
+
+.binding-time {
+    font-size: 12px;
+    color: #999;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.binding-time i {
+    font-size: 11px;
+}
+
+.binding-status {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+}
+
+.binding-status.status-active {
+    background: #e8f5e9;
+    color: #2e7d32;
+}
+
+.binding-status.status-active i {
+    color: #4caf50;
+}
+
+.binding-status.status-inactive {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.binding-status.status-inactive i {
+    color: #f44336;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .binding-item {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .binding-details,
+    .binding-meta {
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+    }
+    
+    .binding-openid {
+        word-break: break-all;
+    }
 }

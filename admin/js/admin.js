@@ -413,6 +413,26 @@ function loadPageData(pageName) {
         case 'admin-list':
             loadAdminList();
             break;
+        case 'qq-bindings':
+            initQQBindingFilters();
+            loadQQBindingList();
+            break;
+        case 'wechat-bindings':
+            initWeChatBindingFilters();
+            loadWeChatBindingList();
+            break;
+        case 'weibo-bindings':
+            initWeiboBindingFilters();
+            loadWeiboBindingList();
+            break;
+        case 'github-bindings':
+            initGithubBindingFilters();
+            loadGithubBindingList();
+            break;
+        case 'google-bindings':
+            initGoogleBindingFilters();
+            loadGoogleBindingList();
+            break;
         case 'email-config':
             loadEmailConfigList();
             break;
@@ -1037,6 +1057,9 @@ function displayUserDetail(user) {
     document.getElementById('detail-last-login').value = user.last_login_at ? formatDateTime(user.last_login_at) : '从未登录';
     document.getElementById('detail-last-ip').value = user.last_login_ip || '-';
     
+    // 显示第三方绑定信息
+    displayThirdPartyBindings(user.third_party_bindings || []);
+    
     // 根据权限控制保存按钮
     const saveBtn = document.getElementById('btn-save-user');
     if (!permissions.can_edit) {
@@ -1044,6 +1067,91 @@ function displayUserDetail(user) {
     } else {
         saveBtn.style.display = 'flex';
     }
+}
+
+/**
+ * 显示第三方绑定信息
+ */
+function displayThirdPartyBindings(bindings) {
+    const container = document.getElementById('third-party-bindings-container');
+    const noBindingsMessage = document.getElementById('no-bindings-message');
+    
+    // 如果没有绑定，显示提示信息
+    if (!bindings || bindings.length === 0) {
+        noBindingsMessage.style.display = 'block';
+        // 移除之前的绑定列表
+        const existingList = container.querySelector('.bindings-list');
+        if (existingList) {
+            existingList.remove();
+        }
+        return;
+    }
+    
+    // 隐藏提示信息
+    noBindingsMessage.style.display = 'none';
+    
+    // 创建或更新绑定列表
+    let bindingsList = container.querySelector('.bindings-list');
+    if (!bindingsList) {
+        bindingsList = document.createElement('div');
+        bindingsList.className = 'bindings-list';
+        container.appendChild(bindingsList);
+    }
+    
+    // 清空现有内容
+    bindingsList.innerHTML = '';
+    
+    // 生成每个绑定项
+    bindings.forEach(binding => {
+        const bindingItem = document.createElement('div');
+        bindingItem.className = 'binding-item';
+        
+        const statusClass = binding.status == 1 ? 'status-active' : 'status-inactive';
+        const platformIcon = getPlatformIcon(binding.platform);
+        
+        bindingItem.innerHTML = `
+            <div class="binding-icon">
+                ${binding.avatar ? `<img src="${binding.avatar}" alt="${binding.platform_name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">` : ''}
+                <i class="${platformIcon}" style="${binding.avatar ? 'display:none;' : ''}"></i>
+            </div>
+            <div class="binding-info">
+                <div class="binding-app-name">${binding.platform_name}</div>
+                <div class="binding-details">
+                    <span class="binding-nickname"><i class="fas fa-user"></i> ${binding.nickname}</span>
+                    <span class="binding-openid"><i class="fas fa-key"></i> ${binding.openid.substring(0, 20)}...</span>
+                </div>
+                <div class="binding-meta">
+                    <span class="binding-time"><i class="fas fa-clock"></i> ${formatDateTime(binding.bind_time)}</span>
+                    <span class="binding-status ${statusClass}">
+                        <i class="fas ${binding.status == 1 ? 'fa-check-circle' : 'fa-times-circle'}"></i>
+                        ${binding.status_text}
+                    </span>
+                </div>
+            </div>
+        `;
+        
+        bindingsList.appendChild(bindingItem);
+    });
+}
+
+/**
+ * 获取平台图标
+ */
+function getPlatformIcon(platform) {
+    const icons = {
+        'wechat': 'fab fa-weixin',
+        'qq': 'fab fa-qq',
+        'weibo': 'fab fa-weibo',
+        'github': 'fab fa-github',
+        'google': 'fab fa-google',
+        'facebook': 'fab fa-facebook',
+        'twitter': 'fab fa-twitter',
+        'alipay': 'fab fa-alipay',
+        'dingtalk': 'fas fa-comment-dots',
+        'default': 'fas fa-link'
+    };
+    
+    return icons[platform] || icons['default'];
 }
 
 /**
@@ -1657,6 +1765,8 @@ function renderEmailConfigList(configs) {
                 'register': '注册',
                 'login': '登录',
                 'reset_password': '重置密码',
+                'change_email': '修改邮箱',
+                'change_phone': '修改手机号',
                 'security_alert': '安全警报'
             };
             return sceneMap[scene] || scene;
@@ -7334,6 +7444,8 @@ function getSceneText(scene) {
         'send_sms': '发送短信',
         'send_email': '发送邮件',
         'change_password': '修改密码',
+        'change_email': '修改邮箱',
+        'change_phone': '修改手机号',
         'bind_phone': '绑定手机',
         'bind_email': '绑定邮箱',
         'unbind_phone': '解绑手机',
@@ -7971,6 +8083,7 @@ function getSmsPurposeText(purpose) {
         'reset_password': '重置密码',
         'bind_phone': '绑定手机',
         'change_phone': '更换手机',
+        'change_email': '修改邮箱',
         'verify': '验证'
     };
     return purposeMap[purpose] || purpose;
@@ -8382,6 +8495,7 @@ function getEmailPurposeText(purpose) {
         'reset_password': '重置密码',
         'bind_email': '绑定邮箱',
         'change_email': '更换邮箱',
+        'change_phone': '修改手机号',
         'verify': '验证'
     };
     return purposeMap[purpose] || purpose;
@@ -8885,8 +8999,13 @@ async function viewSendLimit(id) {
         document.getElementById('send-limit-description').value = limit.description || '';
         
         // 处理模板选择
-        // 判断是模板还是服务商
-        if (limit.template_id.includes(':*')) {
+        // 判断是所有模板、服务商还是具体模板
+        if (limit.template_id === '*') {
+            // 所有模板/所有服务商
+            document.getElementById('send-limit-template-type').value = 'all';
+            updateTemplateSelect(); // 更新选项
+            document.getElementById('send-limit-template-id').value = '*';
+        } else if (limit.template_id.includes(':*')) {
             // 服务商模式
             const channel = limit.template_id.replace(':*', '');
             document.getElementById('send-limit-template-type').value = 'channel';
@@ -8956,8 +9075,13 @@ async function editSendLimit(id) {
         document.getElementById('send-limit-description').value = limit.description || '';
         
         // 处理模板选择
-        // 判断是模板还是服务商
-        if (limit.template_id.includes(':*')) {
+        // 判断是所有模板、服务商还是具体模板
+        if (limit.template_id === '*') {
+            // 所有模板/所有服务商
+            document.getElementById('send-limit-template-type').value = 'all';
+            updateTemplateSelect(); // 更新选项
+            document.getElementById('send-limit-template-id').value = '*';
+        } else if (limit.template_id.includes(':*')) {
             // 服务商模式
             const channel = limit.template_id.replace(':*', '');
             document.getElementById('send-limit-template-type').value = 'channel';
@@ -9791,7 +9915,16 @@ function updateTemplateSelect() {
         return;
     }
     
-    if (templateType === 'template') {
+    if (templateType === 'all') {
+        // 所有模板/所有服务商
+        const option = document.createElement('option');
+        option.value = '*';
+        option.textContent = '所有模板/所有服务商';
+        templateSelect.appendChild(option);
+        templateSelect.value = '*';
+        hint.textContent = '限制将应用到所有服务商的所有模板';
+        
+    } else if (templateType === 'template') {
         // 按模板选择
         let filteredTemplates = smsTemplateList;
         if (purpose && purpose !== '*') {
@@ -9839,6 +9972,12 @@ async function saveSendLimit() {
     
     // 获取保存按钮
     const saveBtn = document.getElementById('btn-save-send-limit');
+    
+    // 防止重复提交
+    if (saveBtn.disabled) {
+        return;
+    }
+    
     const originalContent = saveBtn.innerHTML;
     
     // 禁用按钮并显示加载动画
@@ -9901,19 +10040,44 @@ async function saveSendLimit() {
             body: JSON.stringify(data)
         });
         
+        // 检查响应状态
+        if (!response.ok) {
+            // HTTP 错误状态
+            let errorMessage = '保存失败';
+            try {
+                const result = await response.json();
+                errorMessage = result.message || errorMessage;
+            } catch (e) {
+                // 无法解析 JSON，使用默认错误消息
+                errorMessage = `服务器错误 (${response.status})`;
+            }
+            showToast(errorMessage, 'error');
+            // 恢复按钮状态
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalContent;
+            return;
+        }
+        
         const result = await response.json();
         
         if (result.success) {
             showToast(id ? '编辑成功' : '新增成功', 'success');
+            // 恢复按钮状态
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalContent;
+            // 关闭弹窗
             closeSendLimitModal();
+            // 刷新列表
             loadSendLimitList(currentSendLimitPage);
         } else {
             showToast(result.message || '保存失败', 'error');
+            // 恢复按钮状态
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalContent;
         }
     } catch (error) {
         console.error('保存频率限制失败:', error);
         showToast('网络错误，请稍后重试', 'error');
-    } finally {
         // 恢复按钮状态
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalContent;
@@ -10956,4 +11120,1671 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+
+/**
+ * ========================================
+ * QQ 绑定管理
+ * ========================================
+ */
+
+// QQ 绑定列表相关变量
+let currentQQBindingPage = 1;
+let currentQQBindingSearch = '';
+let currentQQBindStatus = -1;
+
+/**
+ * 加载 QQ 绑定列表
+ */
+async function loadQQBindingList(page = 1) {
+    currentQQBindingPage = page;
+    
+    const loadingEl = document.getElementById('qq-binding-list-loading');
+    const emptyEl = document.getElementById('qq-binding-list-empty');
+    const tableEl = document.getElementById('qq-binding-list-table');
+    
+    // 显示加载状态
+    loadingEl.style.display = 'flex';
+    emptyEl.style.display = 'none';
+    tableEl.style.display = 'none';
+    
+    try {
+        // 构建查询参数
+        const params = new URLSearchParams({
+            page: page,
+            page_size: 20
+        });
+        
+        if (currentQQBindingSearch) {
+            params.append('search', currentQQBindingSearch);
+        }
+        
+        if (currentQQBindStatus >= 0) {
+            params.append('bind_status', currentQQBindStatus);
+        }
+        
+        // 调用 API
+        const response = await fetch(`/admin/api/GetQQBindingsList.php?${params.toString()}`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            // 显示错误信息
+            let errorMsg = result.message || '获取 QQ 绑定列表失败';
+            
+            // 如果有调试信息，在控制台输出
+            if (result.data && result.data.debug) {
+                console.error('QQ 绑定列表 API 错误详情:', result.data.debug);
+                errorMsg += '\n\n详细信息请查看浏览器控制台';
+            }
+            
+            showError(errorMsg);
+            loadingEl.style.display = 'none';
+            emptyEl.style.display = 'flex';
+            return;
+        }
+        
+        // 隐藏加载状态
+        loadingEl.style.display = 'none';
+        
+        // 检查是否有数据
+        if (!result.data.list || result.data.list.length === 0) {
+            emptyEl.style.display = 'flex';
+            return;
+        }
+        
+        // 显示表格
+        tableEl.style.display = 'block';
+        
+        // 渲染表格数据
+        renderQQBindingTable(result.data.list);
+        
+        // 渲染分页
+        renderQQBindingPagination(result.data.pagination);
+        
+    } catch (error) {
+        console.error('加载 QQ 绑定列表失败:', error);
+        showError('网络错误，请稍后重试');
+        loadingEl.style.display = 'none';
+        emptyEl.style.display = 'flex';
+    }
+}
+
+/**
+ * 渲染 QQ 绑定表格
+ */
+function renderQQBindingTable(bindings) {
+    const tbody = document.getElementById('qq-binding-list-tbody');
+    tbody.innerHTML = '';
+    
+    bindings.forEach(binding => {
+        const tr = document.createElement('tr');
+        
+        // QQ 信息
+        const qqInfoHtml = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="${binding.qq_avatar || 'https://avatar.ywxmz.com/user-6380868_1920.png'}" 
+                     alt="QQ头像" 
+                     style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;"
+                     onerror="this.src='https://avatar.ywxmz.com/user-6380868_1920.png'">
+                <div>
+                    <div style="font-weight: 600;">${binding.qq_nickname || '未设置昵称'}</div>
+                    <div style="font-size: 12px; color: #999; font-family: monospace;">${binding.openid}</div>
+                </div>
+            </div>
+        `;
+        
+        // 绑定用户
+        const userInfoHtml = binding.user ? `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="${binding.user.avatar}" 
+                     alt="用户头像" 
+                     style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
+                     onerror="this.src='https://avatar.ywxmz.com/user-6380868_1920.png'">
+                <div>
+                    <div style="font-weight: 500;">${binding.user.nickname || binding.user.username}</div>
+                    <div style="font-size: 12px; color: #999;">@${binding.user.username}</div>
+                </div>
+            </div>
+        ` : '<span style="color: #999;">未绑定</span>';
+        
+        // UnionID
+        const unionidHtml = binding.unionid 
+            ? `<span style="font-family: monospace; font-size: 12px;">${binding.unionid}</span>`
+            : '<span style="color: #999;">-</span>';
+        
+        // 绑定状态
+        const statusClass = binding.bind_status == 1 ? 'status-normal' : 'status-banned';
+        const statusHtml = `<span class="status-badge ${statusClass}">${binding.bind_status_text}</span>`;
+        
+        // 最后登录
+        const lastLoginHtml = binding.last_login_at 
+            ? formatDateTime(binding.last_login_at)
+            : '<span style="color: #999;">从未登录</span>';
+        
+        // 绑定时间
+        const bindTimeHtml = formatDateTime(binding.created_at);
+        
+        // 操作按钮
+        const actionsHtml = `
+            <div class="action-buttons">
+                ${binding.bind_status == 1 ? `
+                    <button class="btn-action btn-warning" onclick="unbindQQ(${binding.id})" title="解绑">
+                        <i class="fas fa-unlink"></i>
+                    </button>
+                ` : ''}
+                <button class="btn-action btn-danger" onclick="deleteQQBinding(${binding.id})" title="删除">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        
+        tr.innerHTML = `
+            <td>${qqInfoHtml}</td>
+            <td>${userInfoHtml}</td>
+            <td>${unionidHtml}</td>
+            <td>${statusHtml}</td>
+            <td>${lastLoginHtml}</td>
+            <td>${bindTimeHtml}</td>
+            <td>${actionsHtml}</td>
+        `;
+        
+        tbody.appendChild(tr);
+    });
+}
+
+/**
+ * 渲染 QQ 绑定分页
+ */
+function renderQQBindingPagination(pagination) {
+    const container = document.getElementById('qq-binding-pagination');
+    
+    if (pagination.total_pages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="pagination-info">
+            共 ${pagination.total} 条记录，第 ${pagination.page} / ${pagination.total_pages} 页
+        </div>
+        <div class="pagination-buttons">
+            <button class="btn-page" ${pagination.page <= 1 ? 'disabled' : ''} 
+                    onclick="loadQQBindingList(${pagination.page - 1})">
+                <i class="fas fa-chevron-left"></i> 上一页
+            </button>
+            <button class="btn-page active">${pagination.page}</button>
+            <button class="btn-page" ${pagination.page >= pagination.total_pages ? 'disabled' : ''} 
+                    onclick="loadQQBindingList(${pagination.page + 1})">
+                下一页 <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * 初始化 QQ 绑定搜索和筛选
+ */
+function initQQBindingFilters() {
+    const searchInput = document.getElementById('qq-binding-search');
+    const btnSearch = document.getElementById('btn-qq-binding-search');
+    const filterBindStatus = document.getElementById('filter-qq-bind-status');
+    const btnReset = document.getElementById('btn-reset-qq-filter');
+    
+    // 搜索按钮
+    if (btnSearch) {
+        btnSearch.addEventListener('click', function() {
+            currentQQBindingSearch = searchInput.value.trim();
+            loadQQBindingList(1);
+        });
+    }
+    
+    // 回车搜索
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                currentQQBindingSearch = searchInput.value.trim();
+                loadQQBindingList(1);
+            }
+        });
+    }
+    
+    // 状态筛选
+    if (filterBindStatus) {
+        filterBindStatus.addEventListener('change', function() {
+            currentQQBindStatus = parseInt(this.value);
+            loadQQBindingList(1);
+        });
+    }
+    
+    // 重置按钮
+    if (btnReset) {
+        btnReset.addEventListener('click', function() {
+            searchInput.value = '';
+            filterBindStatus.value = '-1';
+            currentQQBindingSearch = '';
+            currentQQBindStatus = -1;
+            loadQQBindingList(1);
+        });
+    }
+}
+
+/**
+ * 解绑 QQ
+ */
+async function unbindQQ(bindingId) {
+    showConfirmDialog(
+        '确定要解绑此 QQ 账号吗？\n\n解绑后用户将无法使用该 QQ 账号登录。',
+        async function() {
+            try {
+                const response = await fetch('/admin/api/UnbindQQ.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ id: bindingId })
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    showError(result.message || '解绑失败');
+                    return;
+                }
+                
+                showSuccessToast('解绑成功');
+                
+                // 刷新列表
+                loadQQBindingList(currentQQBindingPage);
+                
+            } catch (error) {
+                console.error('解绑 QQ 失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+    );
+}
+
+/**
+ * 删除 QQ 绑定
+ */
+async function deleteQQBinding(bindingId) {
+    showConfirmDialog(
+        '确定要删除此 QQ 绑定记录吗？\n\n此操作不可恢复！',
+        async function() {
+            try {
+                const response = await fetch('/admin/api/DeleteQQBinding.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ id: bindingId })
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    showError(result.message || '删除失败');
+                    return;
+                }
+                
+                showSuccessToast('删除成功');
+                
+                // 刷新列表
+                loadQQBindingList(currentQQBindingPage);
+                
+            } catch (error) {
+                console.error('删除 QQ 绑定失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+    );
+}
+
+// 页面加载时初始化 QQ 绑定筛选器
+document.addEventListener('DOMContentLoaded', function() {
+    initQQBindingFilters();
+});
+
+
+/**
+ * ========================================
+ * 微信绑定管理
+ * ========================================
+ */
+
+// 微信绑定列表相关变量
+let currentWeChatBindingPage = 1;
+let currentWeChatBindingSearch = '';
+let currentWeChatBindStatus = -1;
+
+/**
+ * 加载微信绑定列表
+ */
+async function loadWeChatBindingList(page = 1) {
+    currentWeChatBindingPage = page;
+    
+    const loadingEl = document.getElementById('wechat-binding-list-loading');
+    const emptyEl = document.getElementById('wechat-binding-list-empty');
+    const tableEl = document.getElementById('wechat-binding-list-table');
+    
+    // 显示加载状态
+    loadingEl.style.display = 'flex';
+    emptyEl.style.display = 'none';
+    tableEl.style.display = 'none';
+    
+    try {
+        // 构建查询参数
+        const params = new URLSearchParams({
+            page: page,
+            page_size: 20
+        });
+        
+        if (currentWeChatBindingSearch) {
+            params.append('search', currentWeChatBindingSearch);
+        }
+        
+        if (currentWeChatBindStatus >= 0) {
+            params.append('bind_status', currentWeChatBindStatus);
+        }
+        
+        // 调用 API
+        const response = await fetch(`/admin/api/GetWeChatBindingsList.php?${params.toString()}`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            // 显示错误信息
+            let errorMsg = result.message || '获取微信绑定列表失败';
+            
+            // 如果有调试信息，在控制台输出
+            if (result.data && result.data.debug) {
+                console.error('微信绑定列表 API 错误详情:', result.data.debug);
+                errorMsg += '\n\n详细信息请查看浏览器控制台';
+            }
+            
+            showError(errorMsg);
+            loadingEl.style.display = 'none';
+            emptyEl.style.display = 'flex';
+            return;
+        }
+        
+        // 隐藏加载状态
+        loadingEl.style.display = 'none';
+        
+        // 检查是否有数据
+        if (!result.data.list || result.data.list.length === 0) {
+            emptyEl.style.display = 'flex';
+            return;
+        }
+        
+        // 显示表格
+        tableEl.style.display = 'block';
+        
+        // 渲染表格数据
+        renderWeChatBindingTable(result.data.list);
+        
+        // 渲染分页
+        renderWeChatBindingPagination(result.data.pagination);
+        
+    } catch (error) {
+        console.error('加载微信绑定列表失败:', error);
+        showError('网络错误，请稍后重试');
+        loadingEl.style.display = 'none';
+        emptyEl.style.display = 'flex';
+    }
+}
+
+/**
+ * 渲染微信绑定表格
+ */
+function renderWeChatBindingTable(bindings) {
+    const tbody = document.getElementById('wechat-binding-list-tbody');
+    tbody.innerHTML = '';
+    
+    bindings.forEach(binding => {
+        const tr = document.createElement('tr');
+        
+        // 微信信息
+        const wechatInfoHtml = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="${binding.wechat_avatar || 'https://avatar.ywxmz.com/user-6380868_1920.png'}" 
+                     alt="微信头像" 
+                     style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;"
+                     onerror="this.src='https://avatar.ywxmz.com/user-6380868_1920.png'">
+                <div>
+                    <div style="font-weight: 600;">${binding.wechat_nickname || '未设置昵称'}</div>
+                    <div style="font-size: 12px; color: #999;">
+                        ${binding.wechat_gender_text} · 
+                        <span style="font-family: monospace;">${binding.openid.substring(0, 16)}...</span>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 绑定用户
+        const userInfoHtml = binding.user ? `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="${binding.user.avatar}" 
+                     alt="用户头像" 
+                     style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
+                     onerror="this.src='https://avatar.ywxmz.com/user-6380868_1920.png'">
+                <div>
+                    <div style="font-weight: 500;">${binding.user.nickname || binding.user.username}</div>
+                    <div style="font-size: 12px; color: #999;">@${binding.user.username}</div>
+                </div>
+            </div>
+        ` : '<span style="color: #999;">未绑定</span>';
+        
+        // 地区
+        const locationHtml = binding.wechat_location 
+            ? `<span style="font-size: 13px;">${binding.wechat_location}</span>`
+            : '<span style="color: #999;">-</span>';
+        
+        // UnionID
+        const unionidHtml = binding.unionid 
+            ? `<span style="font-family: monospace; font-size: 12px;">${binding.unionid}</span>`
+            : '<span style="color: #999;">-</span>';
+        
+        // 绑定状态
+        const statusClass = binding.bind_status == 1 ? 'status-normal' : 'status-banned';
+        const statusHtml = `<span class="status-badge ${statusClass}">${binding.bind_status_text}</span>`;
+        
+        // 最后登录
+        const lastLoginHtml = binding.last_login_at 
+            ? formatDateTime(binding.last_login_at)
+            : '<span style="color: #999;">从未登录</span>';
+        
+        // 绑定时间
+        const bindTimeHtml = formatDateTime(binding.created_at);
+        
+        // 操作按钮
+        const actionsHtml = `
+            <div class="action-buttons">
+                ${binding.bind_status == 1 ? `
+                    <button class="btn-action btn-warning" onclick="unbindWeChat(${binding.id})" title="解绑">
+                        <i class="fas fa-unlink"></i>
+                    </button>
+                ` : ''}
+                <button class="btn-action btn-danger" onclick="deleteWeChatBinding(${binding.id})" title="删除">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        
+        tr.innerHTML = `
+            <td>${wechatInfoHtml}</td>
+            <td>${userInfoHtml}</td>
+            <td>${locationHtml}</td>
+            <td>${unionidHtml}</td>
+            <td>${statusHtml}</td>
+            <td>${lastLoginHtml}</td>
+            <td>${bindTimeHtml}</td>
+            <td>${actionsHtml}</td>
+        `;
+        
+        tbody.appendChild(tr);
+    });
+}
+
+/**
+ * 渲染微信绑定分页
+ */
+function renderWeChatBindingPagination(pagination) {
+    const container = document.getElementById('wechat-binding-pagination');
+    
+    if (pagination.total_pages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="pagination-info">
+            共 ${pagination.total} 条记录，第 ${pagination.page} / ${pagination.total_pages} 页
+        </div>
+        <div class="pagination-buttons">
+            <button class="btn-page" ${pagination.page <= 1 ? 'disabled' : ''} 
+                    onclick="loadWeChatBindingList(${pagination.page - 1})">
+                <i class="fas fa-chevron-left"></i> 上一页
+            </button>
+            <button class="btn-page active">${pagination.page}</button>
+            <button class="btn-page" ${pagination.page >= pagination.total_pages ? 'disabled' : ''} 
+                    onclick="loadWeChatBindingList(${pagination.page + 1})">
+                下一页 <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * 初始化微信绑定搜索和筛选
+ */
+function initWeChatBindingFilters() {
+    const searchInput = document.getElementById('wechat-binding-search');
+    const btnSearch = document.getElementById('btn-wechat-binding-search');
+    const filterBindStatus = document.getElementById('filter-wechat-bind-status');
+    const btnReset = document.getElementById('btn-reset-wechat-filter');
+    
+    // 搜索按钮
+    if (btnSearch) {
+        btnSearch.addEventListener('click', function() {
+            currentWeChatBindingSearch = searchInput.value.trim();
+            loadWeChatBindingList(1);
+        });
+    }
+    
+    // 回车搜索
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                currentWeChatBindingSearch = searchInput.value.trim();
+                loadWeChatBindingList(1);
+            }
+        });
+    }
+    
+    // 状态筛选
+    if (filterBindStatus) {
+        filterBindStatus.addEventListener('change', function() {
+            currentWeChatBindStatus = parseInt(this.value);
+            loadWeChatBindingList(1);
+        });
+    }
+    
+    // 重置按钮
+    if (btnReset) {
+        btnReset.addEventListener('click', function() {
+            searchInput.value = '';
+            filterBindStatus.value = '-1';
+            currentWeChatBindingSearch = '';
+            currentWeChatBindStatus = -1;
+            loadWeChatBindingList(1);
+        });
+    }
+}
+
+/**
+ * 解绑微信
+ */
+async function unbindWeChat(bindingId) {
+    showConfirmDialog(
+        '确定要解绑此微信账号吗？\n\n解绑后用户将无法使用该微信账号登录。',
+        async function() {
+            try {
+                const response = await fetch('/admin/api/UnbindWeChat.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ id: bindingId })
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    showError(result.message || '解绑失败');
+                    return;
+                }
+                
+                showSuccessToast('解绑成功');
+                
+                // 刷新列表
+                loadWeChatBindingList(currentWeChatBindingPage);
+                
+            } catch (error) {
+                console.error('解绑微信失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+    );
+}
+
+/**
+ * 删除微信绑定
+ */
+async function deleteWeChatBinding(bindingId) {
+    showConfirmDialog(
+        '确定要删除此微信绑定记录吗？\n\n此操作不可恢复！',
+        async function() {
+            try {
+                const response = await fetch('/admin/api/DeleteWeChatBinding.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ id: bindingId })
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    showError(result.message || '删除失败');
+                    return;
+                }
+                
+                showSuccessToast('删除成功');
+                
+                // 刷新列表
+                loadWeChatBindingList(currentWeChatBindingPage);
+                
+            } catch (error) {
+                console.error('删除微信绑定失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+    );
+}
+
+// 页面加载时初始化微信绑定筛选器
+document.addEventListener('DOMContentLoaded', function() {
+    initWeChatBindingFilters();
+});
+
+
+/**
+ * ========================================
+ * 微博绑定管理
+ * ========================================
+ */
+
+// 微博绑定列表相关变量
+let currentWeiboBindingPage = 1;
+let currentWeiboBindingSearch = '';
+let currentWeiboBindStatus = -1;
+
+/**
+ * 加载微博绑定列表
+ */
+async function loadWeiboBindingList(page = 1) {
+    currentWeiboBindingPage = page;
+    
+    const loadingEl = document.getElementById('weibo-binding-list-loading');
+    const emptyEl = document.getElementById('weibo-binding-list-empty');
+    const tableEl = document.getElementById('weibo-binding-list-table');
+    
+    // 显示加载状态
+    loadingEl.style.display = 'flex';
+    emptyEl.style.display = 'none';
+    tableEl.style.display = 'none';
+    
+    try {
+        // 构建查询参数
+        const params = new URLSearchParams({
+            page: page,
+            page_size: 20
+        });
+        
+        if (currentWeiboBindingSearch) {
+            params.append('search', currentWeiboBindingSearch);
+        }
+        
+        if (currentWeiboBindStatus >= 0) {
+            params.append('bind_status', currentWeiboBindStatus);
+        }
+        
+        // 调用 API
+        const response = await fetch(`/admin/api/GetWeiboBindingsList.php?${params.toString()}`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            // 显示错误信息
+            let errorMsg = result.message || '获取微博绑定列表失败';
+            
+            // 如果有调试信息，在控制台输出
+            if (result.data && result.data.debug) {
+                console.error('微博绑定列表 API 错误详情:', result.data.debug);
+                errorMsg += '\n\n详细信息请查看浏览器控制台';
+            }
+            
+            showError(errorMsg);
+            loadingEl.style.display = 'none';
+            emptyEl.style.display = 'flex';
+            return;
+        }
+        
+        // 隐藏加载状态
+        loadingEl.style.display = 'none';
+        
+        // 检查是否有数据
+        if (!result.data.list || result.data.list.length === 0) {
+            emptyEl.style.display = 'flex';
+            return;
+        }
+        
+        // 显示表格
+        tableEl.style.display = 'block';
+        
+        // 渲染表格数据
+        renderWeiboBindingTable(result.data.list);
+        
+        // 渲染分页
+        renderWeiboBindingPagination(result.data.pagination);
+        
+    } catch (error) {
+        console.error('加载微博绑定列表失败:', error);
+        showError('网络错误，请稍后重试');
+        loadingEl.style.display = 'none';
+        emptyEl.style.display = 'flex';
+    }
+}
+
+/**
+ * 渲染微博绑定表格
+ */
+function renderWeiboBindingTable(bindings) {
+    const tbody = document.getElementById('weibo-binding-list-tbody');
+    tbody.innerHTML = '';
+    
+    bindings.forEach(binding => {
+        const tr = document.createElement('tr');
+        
+        // 微博信息
+        const weiboInfoHtml = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="${binding.weibo_avatar || 'https://avatar.ywxmz.com/user-6380868_1920.png'}" 
+                     alt="微博头像" 
+                     style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;"
+                     onerror="this.src='https://avatar.ywxmz.com/user-6380868_1920.png'">
+                <div>
+                    <div style="font-weight: 600;">${binding.weibo_nickname || '未设置昵称'}</div>
+                    <div style="font-size: 12px; color: #999;">
+                        ${binding.weibo_gender_text} · UID: ${binding.uid}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 绑定用户
+        const userInfoHtml = binding.user ? `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="${binding.user.avatar}" 
+                     alt="用户头像" 
+                     style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
+                     onerror="this.src='https://avatar.ywxmz.com/user-6380868_1920.png'">
+                <div>
+                    <div style="font-weight: 500;">${binding.user.nickname || binding.user.username}</div>
+                    <div style="font-size: 12px; color: #999;">@${binding.user.username}</div>
+                </div>
+            </div>
+        ` : '<span style="color: #999;">未绑定</span>';
+        
+        // 地区
+        const locationHtml = binding.weibo_location 
+            ? `<span style="font-size: 13px;">${binding.weibo_location}</span>`
+            : '<span style="color: #999;">-</span>';
+        
+        // 个人描述
+        const descriptionHtml = binding.weibo_description 
+            ? `<span style="font-size: 12px; color: #666; max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${binding.weibo_description}">${binding.weibo_description}</span>`
+            : '<span style="color: #999;">-</span>';
+        
+        // 绑定状态
+        const statusClass = binding.bind_status == 1 ? 'status-normal' : 'status-banned';
+        const statusHtml = `<span class="status-badge ${statusClass}">${binding.bind_status_text}</span>`;
+        
+        // 最后登录
+        const lastLoginHtml = binding.last_login_at 
+            ? formatDateTime(binding.last_login_at)
+            : '<span style="color: #999;">从未登录</span>';
+        
+        // 绑定时间
+        const bindTimeHtml = formatDateTime(binding.created_at);
+        
+        // 操作按钮
+        const actionsHtml = `
+            <div class="action-buttons">
+                ${binding.bind_status == 1 ? `
+                    <button class="btn-action btn-warning" onclick="unbindWeibo(${binding.id})" title="解绑">
+                        <i class="fas fa-unlink"></i>
+                    </button>
+                ` : ''}
+                <button class="btn-action btn-danger" onclick="deleteWeiboBinding(${binding.id})" title="删除">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        
+        tr.innerHTML = `
+            <td>${weiboInfoHtml}</td>
+            <td>${userInfoHtml}</td>
+            <td>${locationHtml}</td>
+            <td>${descriptionHtml}</td>
+            <td>${statusHtml}</td>
+            <td>${lastLoginHtml}</td>
+            <td>${bindTimeHtml}</td>
+            <td>${actionsHtml}</td>
+        `;
+        
+        tbody.appendChild(tr);
+    });
+}
+
+/**
+ * 渲染微博绑定分页
+ */
+function renderWeiboBindingPagination(pagination) {
+    const container = document.getElementById('weibo-binding-pagination');
+    
+    if (pagination.total_pages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="pagination-info">
+            共 ${pagination.total} 条记录，第 ${pagination.page} / ${pagination.total_pages} 页
+        </div>
+        <div class="pagination-buttons">
+            <button class="btn-page" ${pagination.page <= 1 ? 'disabled' : ''} 
+                    onclick="loadWeiboBindingList(${pagination.page - 1})">
+                <i class="fas fa-chevron-left"></i> 上一页
+            </button>
+            <button class="btn-page active">${pagination.page}</button>
+            <button class="btn-page" ${pagination.page >= pagination.total_pages ? 'disabled' : ''} 
+                    onclick="loadWeiboBindingList(${pagination.page + 1})">
+                下一页 <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * 初始化微博绑定搜索和筛选
+ */
+function initWeiboBindingFilters() {
+    const searchInput = document.getElementById('weibo-binding-search');
+    const btnSearch = document.getElementById('btn-weibo-binding-search');
+    const filterBindStatus = document.getElementById('filter-weibo-bind-status');
+    const btnReset = document.getElementById('btn-reset-weibo-filter');
+    
+    // 搜索按钮
+    if (btnSearch) {
+        btnSearch.addEventListener('click', function() {
+            currentWeiboBindingSearch = searchInput.value.trim();
+            loadWeiboBindingList(1);
+        });
+    }
+    
+    // 回车搜索
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                currentWeiboBindingSearch = searchInput.value.trim();
+                loadWeiboBindingList(1);
+            }
+        });
+    }
+    
+    // 状态筛选
+    if (filterBindStatus) {
+        filterBindStatus.addEventListener('change', function() {
+            currentWeiboBindStatus = parseInt(this.value);
+            loadWeiboBindingList(1);
+        });
+    }
+    
+    // 重置按钮
+    if (btnReset) {
+        btnReset.addEventListener('click', function() {
+            searchInput.value = '';
+            filterBindStatus.value = '-1';
+            currentWeiboBindingSearch = '';
+            currentWeiboBindStatus = -1;
+            loadWeiboBindingList(1);
+        });
+    }
+}
+
+/**
+ * 解绑微博
+ */
+async function unbindWeibo(bindingId) {
+    showConfirmDialog(
+        '确定要解绑此微博账号吗？\n\n解绑后用户将无法使用该微博账号登录。',
+        async function() {
+            try {
+                const response = await fetch('/admin/api/UnbindWeibo.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ id: bindingId })
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    showError(result.message || '解绑失败');
+                    return;
+                }
+                
+                showSuccessToast('解绑成功');
+                
+                // 刷新列表
+                loadWeiboBindingList(currentWeiboBindingPage);
+                
+            } catch (error) {
+                console.error('解绑微博失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+    );
+}
+
+/**
+ * 删除微博绑定
+ */
+async function deleteWeiboBinding(bindingId) {
+    showConfirmDialog(
+        '确定要删除此微博绑定记录吗？\n\n此操作不可恢复！',
+        async function() {
+            try {
+                const response = await fetch('/admin/api/DeleteWeiboBinding.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ id: bindingId })
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    showError(result.message || '删除失败');
+                    return;
+                }
+                
+                showSuccessToast('删除成功');
+                
+                // 刷新列表
+                loadWeiboBindingList(currentWeiboBindingPage);
+                
+            } catch (error) {
+                console.error('删除微博绑定失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+    );
+}
+
+
+/**
+ * ========================================
+ * GitHub 绑定管理
+ * ========================================
+ */
+
+// GitHub 绑定列表相关变量
+let currentGithubBindingPage = 1;
+let currentGithubBindingSearch = '';
+let currentGithubBindStatus = -1;
+
+/**
+ * 加载 GitHub 绑定列表
+ */
+async function loadGithubBindingList(page = 1) {
+    currentGithubBindingPage = page;
+    
+    const loadingEl = document.getElementById('github-binding-list-loading');
+    const emptyEl = document.getElementById('github-binding-list-empty');
+    const tableEl = document.getElementById('github-binding-list-table');
+    
+    // 显示加载状态
+    loadingEl.style.display = 'flex';
+    emptyEl.style.display = 'none';
+    tableEl.style.display = 'none';
+    
+    try {
+        // 构建查询参数
+        const params = new URLSearchParams({
+            page: page,
+            page_size: 20
+        });
+        
+        if (currentGithubBindingSearch) {
+            params.append('search', currentGithubBindingSearch);
+        }
+        
+        if (currentGithubBindStatus >= 0) {
+            params.append('bind_status', currentGithubBindStatus);
+        }
+        
+        // 调用 API
+        const response = await fetch(`/admin/api/GetGithubBindingsList.php?${params.toString()}`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            // 显示错误信息
+            let errorMsg = result.message || '获取 GitHub 绑定列表失败';
+            
+            // 如果有调试信息，在控制台输出
+            if (result.data && result.data.debug) {
+                console.error('GitHub 绑定列表 API 错误详情:', result.data.debug);
+                errorMsg += '\n\n详细信息请查看浏览器控制台';
+            }
+            
+            showError(errorMsg);
+            loadingEl.style.display = 'none';
+            emptyEl.style.display = 'flex';
+            return;
+        }
+        
+        // 隐藏加载状态
+        loadingEl.style.display = 'none';
+        
+        // 检查是否有数据
+        if (!result.data.list || result.data.list.length === 0) {
+            emptyEl.style.display = 'flex';
+            return;
+        }
+        
+        // 显示表格
+        tableEl.style.display = 'block';
+        
+        // 渲染表格数据
+        renderGithubBindingTable(result.data.list);
+        
+        // 渲染分页
+        renderGithubBindingPagination(result.data.pagination);
+        
+    } catch (error) {
+        console.error('加载 GitHub 绑定列表失败:', error);
+        showError('网络错误，请稍后重试');
+        loadingEl.style.display = 'none';
+        emptyEl.style.display = 'flex';
+    }
+}
+
+/**
+ * 渲染 GitHub 绑定表格
+ */
+function renderGithubBindingTable(bindings) {
+    const tbody = document.getElementById('github-binding-list-tbody');
+    tbody.innerHTML = '';
+    
+    bindings.forEach(binding => {
+        const tr = document.createElement('tr');
+        
+        // GitHub 信息
+        const githubInfoHtml = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="${binding.github_avatar || 'https://avatar.ywxmz.com/user-6380868_1920.png'}" 
+                     alt="GitHub 头像" 
+                     style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;"
+                     onerror="this.src='https://avatar.ywxmz.com/user-6380868_1920.png'">
+                <div>
+                    <div style="font-weight: 600;">${binding.github_name || binding.github_login}</div>
+                    <div style="font-size: 12px; color: #999;">
+                        @${binding.github_login}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 绑定用户
+        const userInfoHtml = binding.user ? `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="${binding.user.avatar}" 
+                     alt="用户头像" 
+                     style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
+                     onerror="this.src='https://avatar.ywxmz.com/user-6380868_1920.png'">
+                <div>
+                    <div style="font-weight: 500;">${binding.user.nickname || binding.user.username}</div>
+                    <div style="font-size: 12px; color: #999;">@${binding.user.username}</div>
+                </div>
+            </div>
+        ` : '<span style="color: #999;">未绑定</span>';
+        
+        // 邮箱
+        const emailHtml = binding.github_email 
+            ? `<span style="font-size: 13px;">${binding.github_email}</span>`
+            : '<span style="color: #999;">-</span>';
+        
+        // 个人简介
+        const bioHtml = binding.github_bio 
+            ? `<span style="font-size: 12px; color: #666; max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${binding.github_bio}">${binding.github_bio}</span>`
+            : '<span style="color: #999;">-</span>';
+        
+        // 绑定状态
+        const statusClass = binding.bind_status == 1 ? 'status-normal' : 'status-banned';
+        const statusHtml = `<span class="status-badge ${statusClass}">${binding.bind_status_text}</span>`;
+        
+        // 最后登录
+        const lastLoginHtml = binding.last_login_at 
+            ? formatDateTime(binding.last_login_at)
+            : '<span style="color: #999;">从未登录</span>';
+        
+        // 绑定时间
+        const bindTimeHtml = formatDateTime(binding.created_at);
+        
+        // 操作按钮
+        const actionsHtml = `
+            <div class="action-buttons">
+                ${binding.bind_status == 1 ? `
+                    <button class="btn-action btn-warning" onclick="unbindGithub(${binding.id})" title="解绑">
+                        <i class="fas fa-unlink"></i>
+                    </button>
+                ` : ''}
+                <button class="btn-action btn-danger" onclick="deleteGithubBinding(${binding.id})" title="删除">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        
+        tr.innerHTML = `
+            <td>${githubInfoHtml}</td>
+            <td>${userInfoHtml}</td>
+            <td>${emailHtml}</td>
+            <td>${bioHtml}</td>
+            <td>${statusHtml}</td>
+            <td>${lastLoginHtml}</td>
+            <td>${bindTimeHtml}</td>
+            <td>${actionsHtml}</td>
+        `;
+        
+        tbody.appendChild(tr);
+    });
+}
+
+/**
+ * 渲染 GitHub 绑定分页
+ */
+function renderGithubBindingPagination(pagination) {
+    const container = document.getElementById('github-binding-pagination');
+    
+    if (pagination.total_pages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="pagination-info">
+            共 ${pagination.total} 条记录，第 ${pagination.page} / ${pagination.total_pages} 页
+        </div>
+        <div class="pagination-buttons">
+            <button class="btn-page" ${pagination.page <= 1 ? 'disabled' : ''} 
+                    onclick="loadGithubBindingList(${pagination.page - 1})">
+                <i class="fas fa-chevron-left"></i> 上一页
+            </button>
+            <button class="btn-page active">${pagination.page}</button>
+            <button class="btn-page" ${pagination.page >= pagination.total_pages ? 'disabled' : ''} 
+                    onclick="loadGithubBindingList(${pagination.page + 1})">
+                下一页 <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * 初始化 GitHub 绑定搜索和筛选
+ */
+function initGithubBindingFilters() {
+    const searchInput = document.getElementById('github-binding-search');
+    const btnSearch = document.getElementById('btn-github-binding-search');
+    const filterBindStatus = document.getElementById('filter-github-bind-status');
+    const btnReset = document.getElementById('btn-reset-github-filter');
+    
+    // 搜索按钮
+    if (btnSearch) {
+        btnSearch.addEventListener('click', function() {
+            currentGithubBindingSearch = searchInput.value.trim();
+            loadGithubBindingList(1);
+        });
+    }
+    
+    // 回车搜索
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                currentGithubBindingSearch = searchInput.value.trim();
+                loadGithubBindingList(1);
+            }
+        });
+    }
+    
+    // 状态筛选
+    if (filterBindStatus) {
+        filterBindStatus.addEventListener('change', function() {
+            currentGithubBindStatus = parseInt(this.value);
+            loadGithubBindingList(1);
+        });
+    }
+    
+    // 重置按钮
+    if (btnReset) {
+        btnReset.addEventListener('click', function() {
+            searchInput.value = '';
+            filterBindStatus.value = '-1';
+            currentGithubBindingSearch = '';
+            currentGithubBindStatus = -1;
+            loadGithubBindingList(1);
+        });
+    }
+}
+
+/**
+ * 解绑 GitHub
+ */
+async function unbindGithub(bindingId) {
+    showConfirmDialog(
+        '确定要解绑此 GitHub 账号吗？\n\n解绑后用户将无法使用该 GitHub 账号登录。',
+        async function() {
+            try {
+                const response = await fetch('/admin/api/UnbindGithub.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ id: bindingId })
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    showError(result.message || '解绑失败');
+                    return;
+                }
+                
+                showSuccessToast('解绑成功');
+                
+                // 刷新列表
+                loadGithubBindingList(currentGithubBindingPage);
+                
+            } catch (error) {
+                console.error('解绑 GitHub 失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+    );
+}
+
+/**
+ * 删除 GitHub 绑定
+ */
+async function deleteGithubBinding(bindingId) {
+    showConfirmDialog(
+        '确定要删除此 GitHub 绑定记录吗？\n\n此操作不可恢复！',
+        async function() {
+            try {
+                const response = await fetch('/admin/api/DeleteGithubBinding.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ id: bindingId })
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    showError(result.message || '删除失败');
+                    return;
+                }
+                
+                showSuccessToast('删除成功');
+                
+                // 刷新列表
+                loadGithubBindingList(currentGithubBindingPage);
+                
+            } catch (error) {
+                console.error('删除 GitHub 绑定失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+    );
+}
+
+/**
+ * ========================================
+ * Google 绑定管理
+ * ========================================
+ */
+
+// Google 绑定列表相关变量
+let currentGoogleBindingPage = 1;
+let currentGoogleBindingSearch = '';
+let currentGoogleBindStatus = -1;
+
+/**
+ * 加载 Google 绑定列表
+ */
+async function loadGoogleBindingList(page = 1) {
+    currentGoogleBindingPage = page;
+    
+    const loadingEl = document.getElementById('google-binding-list-loading');
+    const emptyEl = document.getElementById('google-binding-list-empty');
+    const tableEl = document.getElementById('google-binding-list-table');
+    
+    // 显示加载状态
+    loadingEl.style.display = 'flex';
+    emptyEl.style.display = 'none';
+    tableEl.style.display = 'none';
+    
+    try {
+        // 构建查询参数
+        const params = new URLSearchParams({
+            page: page,
+            page_size: 20
+        });
+        
+        if (currentGoogleBindingSearch) {
+            params.append('search', currentGoogleBindingSearch);
+        }
+        
+        if (currentGoogleBindStatus >= 0) {
+            params.append('bind_status', currentGoogleBindStatus);
+        }
+        
+        // 调用 API
+        const response = await fetch(`/admin/api/GetGoogleBindingsList.php?${params.toString()}`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        const result = await response.json();
+        
+        if (!result.success) {
+            // 显示错误信息
+            let errorMsg = result.message || '获取 Google 绑定列表失败';
+            
+            // 如果有调试信息，在控制台输出
+            if (result.data && result.data.debug) {
+                console.error('Google 绑定列表 API 错误详情:', result.data.debug);
+                errorMsg += '\n\n详细信息请查看浏览器控制台';
+            }
+            
+            showError(errorMsg);
+            loadingEl.style.display = 'none';
+            emptyEl.style.display = 'flex';
+            return;
+        }
+        
+        // 隐藏加载状态
+        loadingEl.style.display = 'none';
+        
+        // 检查是否有数据
+        if (!result.data.list || result.data.list.length === 0) {
+            emptyEl.style.display = 'flex';
+            return;
+        }
+        
+        // 显示表格
+        tableEl.style.display = 'block';
+        
+        // 渲染表格数据
+        renderGoogleBindingTable(result.data.list);
+        
+        // 渲染分页
+        renderGoogleBindingPagination(result.data.pagination);
+        
+    } catch (error) {
+        console.error('加载 Google 绑定列表失败:', error);
+        showError('网络错误，请稍后重试');
+        loadingEl.style.display = 'none';
+        emptyEl.style.display = 'flex';
+    }
+}
+
+/**
+ * 渲染 Google 绑定表格
+ */
+function renderGoogleBindingTable(bindings) {
+    const tbody = document.getElementById('google-binding-list-tbody');
+    tbody.innerHTML = '';
+    
+    bindings.forEach(binding => {
+        const tr = document.createElement('tr');
+        
+        // Google 信息
+        const googleInfoHtml = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="${binding.google_avatar || 'https://avatar.ywxmz.com/user-6380868_1920.png'}" 
+                     alt="Google 头像" 
+                     style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;"
+                     onerror="this.src='https://avatar.ywxmz.com/user-6380868_1920.png'">
+                <div>
+                    <div style="font-weight: 600;">${binding.google_name || 'Google 用户'}</div>
+                    <div style="font-size: 12px; color: #999;">
+                        ID: ${binding.google_id}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 绑定用户
+        const userInfoHtml = binding.user ? `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <img src="${binding.user.avatar}" 
+                     alt="用户头像" 
+                     style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;"
+                     onerror="this.src='https://avatar.ywxmz.com/user-6380868_1920.png'">
+                <div>
+                    <div style="font-weight: 500;">${binding.user.nickname || binding.user.username}</div>
+                    <div style="font-size: 12px; color: #999;">@${binding.user.username}</div>
+                </div>
+            </div>
+        ` : '<span style="color: #999;">未绑定</span>';
+        
+        // 邮箱
+        const emailHtml = binding.google_email 
+            ? `<span style="font-size: 13px;">${binding.google_email}</span>`
+            : '<span style="color: #999;">-</span>';
+        
+        // 邮箱验证状态
+        const verifiedClass = binding.google_verified_email ? 'status-normal' : 'status-pending';
+        const verifiedText = binding.google_verified_email ? '已验证' : '未验证';
+        const verifiedHtml = `<span class="status-badge ${verifiedClass}">${verifiedText}</span>`;
+        
+        // 绑定状态
+        const statusClass = binding.bind_status == 1 ? 'status-normal' : 'status-banned';
+        const statusHtml = `<span class="status-badge ${statusClass}">${binding.bind_status_text}</span>`;
+        
+        // 最后登录
+        const lastLoginHtml = binding.last_login_at 
+            ? formatDateTime(binding.last_login_at)
+            : '<span style="color: #999;">从未登录</span>';
+        
+        // 绑定时间
+        const bindTimeHtml = formatDateTime(binding.created_at);
+        
+        // 操作按钮
+        const actionsHtml = `
+            <div class="action-buttons">
+                ${binding.bind_status == 1 ? `
+                    <button class="btn-action btn-warning" onclick="unbindGoogle(${binding.id})" title="解绑">
+                        <i class="fas fa-unlink"></i>
+                    </button>
+                ` : ''}
+                <button class="btn-action btn-danger" onclick="deleteGoogleBinding(${binding.id})" title="删除">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        
+        tr.innerHTML = `
+            <td>${googleInfoHtml}</td>
+            <td>${userInfoHtml}</td>
+            <td>${emailHtml}</td>
+            <td>${verifiedHtml}</td>
+            <td>${statusHtml}</td>
+            <td>${lastLoginHtml}</td>
+            <td>${bindTimeHtml}</td>
+            <td>${actionsHtml}</td>
+        `;
+        
+        tbody.appendChild(tr);
+    });
+}
+
+/**
+ * 渲染 Google 绑定分页
+ */
+function renderGoogleBindingPagination(pagination) {
+    const container = document.getElementById('google-binding-pagination');
+    
+    if (pagination.total_pages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="pagination-info">
+            共 ${pagination.total} 条记录，第 ${pagination.page} / ${pagination.total_pages} 页
+        </div>
+        <div class="pagination-buttons">
+            <button class="btn-page" ${pagination.page <= 1 ? 'disabled' : ''} 
+                    onclick="loadGoogleBindingList(${pagination.page - 1})">
+                <i class="fas fa-chevron-left"></i> 上一页
+            </button>
+            <button class="btn-page active">${pagination.page}</button>
+            <button class="btn-page" ${pagination.page >= pagination.total_pages ? 'disabled' : ''} 
+                    onclick="loadGoogleBindingList(${pagination.page + 1})">
+                下一页 <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * 初始化 Google 绑定搜索和筛选
+ */
+function initGoogleBindingFilters() {
+    const searchInput = document.getElementById('google-binding-search');
+    const btnSearch = document.getElementById('btn-google-binding-search');
+    const filterBindStatus = document.getElementById('filter-google-bind-status');
+    const btnReset = document.getElementById('btn-reset-google-filter');
+    
+    // 搜索按钮
+    if (btnSearch) {
+        btnSearch.addEventListener('click', function() {
+            currentGoogleBindingSearch = searchInput.value.trim();
+            loadGoogleBindingList(1);
+        });
+    }
+    
+    // 回车搜索
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                currentGoogleBindingSearch = searchInput.value.trim();
+                loadGoogleBindingList(1);
+            }
+        });
+    }
+    
+    // 状态筛选
+    if (filterBindStatus) {
+        filterBindStatus.addEventListener('change', function() {
+            currentGoogleBindStatus = parseInt(this.value);
+            loadGoogleBindingList(1);
+        });
+    }
+    
+    // 重置按钮
+    if (btnReset) {
+        btnReset.addEventListener('click', function() {
+            searchInput.value = '';
+            filterBindStatus.value = '-1';
+            currentGoogleBindingSearch = '';
+            currentGoogleBindStatus = -1;
+            loadGoogleBindingList(1);
+        });
+    }
+}
+
+/**
+ * 解绑 Google
+ */
+async function unbindGoogle(bindingId) {
+    showConfirmDialog(
+        '确定要解绑此 Google 账号吗？\n\n解绑后用户将无法使用该 Google 账号登录。',
+        async function() {
+            try {
+                const response = await fetch('/admin/api/UnbindGoogle.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ id: bindingId })
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    showError(result.message || '解绑失败');
+                    return;
+                }
+                
+                showSuccessToast('解绑成功');
+                
+                // 刷新列表
+                loadGoogleBindingList(currentGoogleBindingPage);
+                
+            } catch (error) {
+                console.error('解绑 Google 失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+    );
+}
+
+/**
+ * 删除 Google 绑定
+ */
+async function deleteGoogleBinding(bindingId) {
+    showConfirmDialog(
+        '确定要删除此 Google 绑定记录吗？\n\n此操作不可恢复！',
+        async function() {
+            try {
+                const response = await fetch('/admin/api/DeleteGoogleBinding.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ id: bindingId })
+                });
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    showError(result.message || '删除失败');
+                    return;
+                }
+                
+                showSuccessToast('删除成功');
+                
+                // 刷新列表
+                loadGoogleBindingList(currentGoogleBindingPage);
+                
+            } catch (error) {
+                console.error('删除 Google 绑定失败:', error);
+                showError('网络错误，请稍后重试');
+            }
+        }
+    );
 }

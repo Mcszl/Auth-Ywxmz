@@ -58,6 +58,37 @@
                     </div>
                 </div>
 
+                <!-- 第三方绑定管理 -->
+                <div class="nav-group">
+                    <div class="nav-group-title">
+                        <i class="fas fa-link"></i>
+                        <span>第三方绑定管理</span>
+                        <i class="fas fa-chevron-down nav-group-arrow"></i>
+                    </div>
+                    <div class="nav-group-items">
+                        <a href="#qq-bindings" class="nav-item" data-page="qq-bindings">
+                            <i class="fab fa-qq"></i>
+                            <span>QQ</span>
+                        </a>
+                        <a href="#wechat-bindings" class="nav-item" data-page="wechat-bindings">
+                            <i class="fab fa-weixin"></i>
+                            <span>微信</span>
+                        </a>
+                        <a href="#weibo-bindings" class="nav-item" data-page="weibo-bindings">
+                            <i class="fab fa-weibo"></i>
+                            <span>微博</span>
+                        </a>
+                        <a href="#github-bindings" class="nav-item" data-page="github-bindings">
+                            <i class="fab fa-github"></i>
+                            <span>GitHub</span>
+                        </a>
+                        <a href="#google-bindings" class="nav-item" data-page="google-bindings">
+                            <i class="fab fa-google"></i>
+                            <span>Google</span>
+                        </a>
+                    </div>
+                </div>
+
                 <!-- 系统配置 -->
                 <div class="nav-group">
                     <div class="nav-group-title">
@@ -424,6 +455,395 @@
                 </div>
             </div>
 
+            <!-- QQ 绑定管理 -->
+            <div class="page-content" id="page-qq-bindings">
+                <div class="page-header">
+                    <h1>QQ 绑定管理</h1>
+                    <p>管理所有 QQ 账号绑定信息</p>
+                </div>
+
+                <!-- 搜索和筛选 -->
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-body" style="padding: 20px;">
+                        <div class="search-filter-bar">
+                            <div class="search-box">
+                                <input type="text" id="qq-binding-search" placeholder="搜索 OpenID、QQ昵称、用户名..." class="search-input">
+                                <button class="btn-search" id="btn-qq-binding-search">
+                                    <i class="fas fa-search"></i>
+                                    搜索
+                                </button>
+                            </div>
+                            <div class="filter-box">
+                                <select id="filter-qq-bind-status" class="filter-select">
+                                    <option value="-1">全部状态</option>
+                                    <option value="1">已绑定</option>
+                                    <option value="0">已解绑</option>
+                                </select>
+                                <button class="btn-reset" id="btn-reset-qq-filter">
+                                    <i class="fas fa-redo"></i>
+                                    重置
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- QQ 绑定列表表格 -->
+                <div class="card">
+                    <div class="card-body" style="padding: 0;">
+                        <!-- 加载中 -->
+                        <div id="qq-binding-list-loading" class="loading-container">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>加载中...</p>
+                        </div>
+
+                        <!-- 空状态 -->
+                        <div id="qq-binding-list-empty" class="empty-state" style="display: none;">
+                            <i class="fab fa-qq"></i>
+                            <h3>暂无 QQ 绑定</h3>
+                            <p>还没有用户绑定 QQ 账号</p>
+                        </div>
+
+                        <!-- QQ 绑定表格 -->
+                        <div id="qq-binding-list-table" style="display: none;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>QQ 信息</th>
+                                        <th>绑定用户</th>
+                                        <th>UnionID</th>
+                                        <th>绑定状态</th>
+                                        <th>最后登录</th>
+                                        <th>绑定时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="qq-binding-list-tbody">
+                                    <!-- QQ 绑定数据将通过 JavaScript 动态生成 -->
+                                </tbody>
+                            </table>
+
+                            <!-- 分页 -->
+                            <div class="pagination-container" id="qq-binding-pagination">
+                                <!-- 分页将通过 JavaScript 动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 微信绑定管理 -->
+            <div class="page-content" id="page-wechat-bindings">
+                <div class="page-header">
+                    <h1>微信绑定管理</h1>
+                    <p>管理所有微信账号绑定信息</p>
+                </div>
+
+                <!-- 搜索和筛选 -->
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-body" style="padding: 20px;">
+                        <div class="search-filter-bar">
+                            <div class="search-box">
+                                <input type="text" id="wechat-binding-search" placeholder="搜索 OpenID、微信昵称、用户名..." class="search-input">
+                                <button class="btn-search" id="btn-wechat-binding-search">
+                                    <i class="fas fa-search"></i>
+                                    搜索
+                                </button>
+                            </div>
+                            <div class="filter-box">
+                                <select id="filter-wechat-bind-status" class="filter-select">
+                                    <option value="-1">全部状态</option>
+                                    <option value="1">已绑定</option>
+                                    <option value="0">已解绑</option>
+                                </select>
+                                <button class="btn-reset" id="btn-reset-wechat-filter">
+                                    <i class="fas fa-redo"></i>
+                                    重置
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 微信绑定列表表格 -->
+                <div class="card">
+                    <div class="card-body" style="padding: 0;">
+                        <!-- 加载中 -->
+                        <div id="wechat-binding-list-loading" class="loading-container">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>加载中...</p>
+                        </div>
+
+                        <!-- 空状态 -->
+                        <div id="wechat-binding-list-empty" class="empty-state" style="display: none;">
+                            <i class="fab fa-weixin"></i>
+                            <h3>暂无微信绑定</h3>
+                            <p>还没有用户绑定微信账号</p>
+                        </div>
+
+                        <!-- 微信绑定表格 -->
+                        <div id="wechat-binding-list-table" style="display: none;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>微信信息</th>
+                                        <th>绑定用户</th>
+                                        <th>地区</th>
+                                        <th>UnionID</th>
+                                        <th>绑定状态</th>
+                                        <th>最后登录</th>
+                                        <th>绑定时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="wechat-binding-list-tbody">
+                                    <!-- 微信绑定数据将通过 JavaScript 动态生成 -->
+                                </tbody>
+                            </table>
+
+                            <!-- 分页 -->
+                            <div class="pagination-container" id="wechat-binding-pagination">
+                                <!-- 分页将通过 JavaScript 动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 微博绑定管理 -->
+            <div class="page-content" id="page-weibo-bindings">
+                <div class="page-header">
+                    <h1>微博绑定管理</h1>
+                    <p>管理所有微博账号绑定信息</p>
+                </div>
+
+                <!-- 搜索和筛选 -->
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-body" style="padding: 20px;">
+                        <div class="search-filter-bar">
+                            <div class="search-box">
+                                <input type="text" id="weibo-binding-search" placeholder="搜索 UID、微博昵称、用户名..." class="search-input">
+                                <button class="btn-search" id="btn-weibo-binding-search">
+                                    <i class="fas fa-search"></i>
+                                    搜索
+                                </button>
+                            </div>
+                            <div class="filter-box">
+                                <select id="filter-weibo-bind-status" class="filter-select">
+                                    <option value="-1">全部状态</option>
+                                    <option value="1">已绑定</option>
+                                    <option value="0">已解绑</option>
+                                </select>
+                                <button class="btn-reset" id="btn-reset-weibo-filter">
+                                    <i class="fas fa-redo"></i>
+                                    重置
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 微博绑定列表表格 -->
+                <div class="card">
+                    <div class="card-body" style="padding: 0;">
+                        <!-- 加载中 -->
+                        <div id="weibo-binding-list-loading" class="loading-container">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>加载中...</p>
+                        </div>
+
+                        <!-- 空状态 -->
+                        <div id="weibo-binding-list-empty" class="empty-state" style="display: none;">
+                            <i class="fab fa-weibo"></i>
+                            <h3>暂无微博绑定</h3>
+                            <p>还没有用户绑定微博账号</p>
+                        </div>
+
+                        <!-- 微博绑定表格 -->
+                        <div id="weibo-binding-list-table" style="display: none;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>微博信息</th>
+                                        <th>绑定用户</th>
+                                        <th>地区</th>
+                                        <th>个人描述</th>
+                                        <th>绑定状态</th>
+                                        <th>最后登录</th>
+                                        <th>绑定时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="weibo-binding-list-tbody">
+                                    <!-- 微博绑定数据将通过 JavaScript 动态生成 -->
+                                </tbody>
+                            </table>
+
+                            <!-- 分页 -->
+                            <div class="pagination-container" id="weibo-binding-pagination">
+                                <!-- 分页将通过 JavaScript 动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GitHub 绑定管理 -->
+            <div class="page-content" id="page-github-bindings">
+                <div class="page-header">
+                    <h1>GitHub 绑定管理</h1>
+                    <p>管理所有 GitHub 账号绑定信息</p>
+                </div>
+
+                <!-- 搜索和筛选 -->
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-body" style="padding: 20px;">
+                        <div class="search-filter-bar">
+                            <div class="search-box">
+                                <input type="text" id="github-binding-search" placeholder="搜索 GitHub ID、登录名、显示名称、用户名..." class="search-input">
+                                <button class="btn-search" id="btn-github-binding-search">
+                                    <i class="fas fa-search"></i>
+                                    搜索
+                                </button>
+                            </div>
+                            <div class="filter-box">
+                                <select id="filter-github-bind-status" class="filter-select">
+                                    <option value="-1">全部状态</option>
+                                    <option value="1">已绑定</option>
+                                    <option value="0">已解绑</option>
+                                </select>
+                                <button class="btn-reset" id="btn-reset-github-filter">
+                                    <i class="fas fa-redo"></i>
+                                    重置
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GitHub 绑定列表表格 -->
+                <div class="card">
+                    <div class="card-body" style="padding: 0;">
+                        <!-- 加载中 -->
+                        <div id="github-binding-list-loading" class="loading-container">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>加载中...</p>
+                        </div>
+
+                        <!-- 空状态 -->
+                        <div id="github-binding-list-empty" class="empty-state" style="display: none;">
+                            <i class="fab fa-github"></i>
+                            <h3>暂无 GitHub 绑定</h3>
+                            <p>还没有用户绑定 GitHub 账号</p>
+                        </div>
+
+                        <!-- GitHub 绑定表格 -->
+                        <div id="github-binding-list-table" style="display: none;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>GitHub 信息</th>
+                                        <th>绑定用户</th>
+                                        <th>邮箱</th>
+                                        <th>个人简介</th>
+                                        <th>绑定状态</th>
+                                        <th>最后登录</th>
+                                        <th>绑定时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="github-binding-list-tbody">
+                                    <!-- GitHub 绑定数据将通过 JavaScript 动态生成 -->
+                                </tbody>
+                            </table>
+
+                            <!-- 分页 -->
+                            <div class="pagination-container" id="github-binding-pagination">
+                                <!-- 分页将通过 JavaScript 动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Google 绑定管理 -->
+            <div class="page-content" id="page-google-bindings">
+                <div class="page-header">
+                    <h1>Google 绑定管理</h1>
+                    <p>管理所有 Google 账号绑定信息</p>
+                </div>
+
+                <!-- 搜索和筛选 -->
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-body" style="padding: 20px;">
+                        <div class="search-filter-bar">
+                            <div class="search-box">
+                                <input type="text" id="google-binding-search" placeholder="搜索 Google ID、显示名称、邮箱、用户名..." class="search-input">
+                                <button class="btn-search" id="btn-google-binding-search">
+                                    <i class="fas fa-search"></i>
+                                    搜索
+                                </button>
+                            </div>
+                            <div class="filter-box">
+                                <select id="filter-google-bind-status" class="filter-select">
+                                    <option value="-1">全部状态</option>
+                                    <option value="1">已绑定</option>
+                                    <option value="0">已解绑</option>
+                                </select>
+                                <button class="btn-reset" id="btn-reset-google-filter">
+                                    <i class="fas fa-redo"></i>
+                                    重置
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Google 绑定列表表格 -->
+                <div class="card">
+                    <div class="card-body" style="padding: 0;">
+                        <!-- 加载中 -->
+                        <div id="google-binding-list-loading" class="loading-container">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>加载中...</p>
+                        </div>
+
+                        <!-- 空状态 -->
+                        <div id="google-binding-list-empty" class="empty-state" style="display: none;">
+                            <i class="fab fa-google"></i>
+                            <h3>暂无 Google 绑定</h3>
+                            <p>还没有用户绑定 Google 账号</p>
+                        </div>
+
+                        <!-- Google 绑定表格 -->
+                        <div id="google-binding-list-table" style="display: none;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Google 信息</th>
+                                        <th>绑定用户</th>
+                                        <th>邮箱</th>
+                                        <th>邮箱验证</th>
+                                        <th>绑定状态</th>
+                                        <th>最后登录</th>
+                                        <th>绑定时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="google-binding-list-tbody">
+                                    <!-- Google 绑定数据将通过 JavaScript 动态生成 -->
+                                </tbody>
+                            </table>
+
+                            <!-- 分页 -->
+                            <div class="pagination-container" id="google-binding-pagination">
+                                <!-- 分页将通过 JavaScript 动态生成 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 邮件配置 -->
             <div class="page-content" id="page-email-config">
                 <div class="page-header">
@@ -533,6 +953,8 @@
                                     <option value="register">注册</option>
                                     <option value="login">登录</option>
                                     <option value="reset_password">重置密码</option>
+                                    <option value="change_email">修改邮箱</option>
+                                    <option value="change_phone">修改手机号</option>
                                     <option value="security_alert">安全警报</option>
                                     <option value="welcome">欢迎邮件</option>
                                 </select>
@@ -648,6 +1070,8 @@
                                     <option value="register">注册</option>
                                     <option value="login">登录</option>
                                     <option value="reset_password">重置密码</option>
+                                    <option value="change_email">修改邮箱</option>
+                                    <option value="change_phone">修改手机号</option>
                                     <option value="security_alert">安全警报</option>
                                     <option value="verify">验证</option>
                                 </select>
@@ -2684,6 +3108,17 @@
                         </div>
 
                         <div class="form-section">
+                            <h4><i class="fas fa-link"></i> 第三方绑定</h4>
+                            <div id="third-party-bindings-container">
+                                <!-- 第三方绑定列表将通过 JavaScript 动态生成 -->
+                                <div class="no-bindings" id="no-bindings-message">
+                                    <i class="fas fa-unlink"></i>
+                                    <p>暂无第三方绑定</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
                             <h4><i class="fas fa-info-circle"></i> 注册信息</h4>
                             <div class="form-grid">
                                 <div class="form-group">
@@ -2807,6 +3242,12 @@
                                 <input type="checkbox" name="email-config-scenes" value="reset_password"> 重置密码
                             </label>
                             <label class="checkbox-label">
+                                <input type="checkbox" name="email-config-scenes" value="change_email"> 修改邮箱
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="email-config-scenes" value="change_phone"> 修改手机号
+                            </label>
+                            <label class="checkbox-label">
                                 <input type="checkbox" name="email-config-scenes" value="security_alert"> 安全警报
                             </label>
                         </div>
@@ -2902,6 +3343,8 @@
                                 <option value="register">注册</option>
                                 <option value="login">登录</option>
                                 <option value="reset_password">重置密码</option>
+                                <option value="change_email">修改邮箱</option>
+                                <option value="change_phone">修改手机号</option>
                                 <option value="security_alert">安全警报</option>
                                 <option value="welcome">欢迎邮件</option>
                             </select>
@@ -3003,6 +3446,8 @@
                                 <option value="register">注册</option>
                                 <option value="login">登录</option>
                                 <option value="reset_password">重置密码</option>
+                                <option value="change_email">修改邮箱</option>
+                                <option value="change_phone">修改手机号</option>
                                 <option value="security_alert">安全警报</option>
                                 <option value="verify">验证</option>
                             </select>
@@ -4118,6 +4563,7 @@
                             <label for="send-limit-template-type">限制对象 <span class="required">*</span></label>
                             <select id="send-limit-template-type" required>
                                 <option value="">请选择</option>
+                                <option value="all">所有模板/所有服务商</option>
                                 <option value="template">指定模板</option>
                                 <option value="channel">指定服务商（所有模板）</option>
                             </select>
@@ -4129,6 +4575,8 @@
                                 <option value="register">注册</option>
                                 <option value="login">登录</option>
                                 <option value="reset_password">重置密码</option>
+                                <option value="change_email">修改邮箱</option>
+                                <option value="change_phone">修改手机号</option>
                                 <option value="security_alert">安全警报</option>
                                 <option value="verify">验证</option>
                             </select>

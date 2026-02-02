@@ -66,7 +66,8 @@ try {
     require_once __DIR__ . '/AdminAuthHelper.php';
     $admin = AdminAuthHelper::checkAdminPermission($pdo, 'jsonResponse');
     
-    $isSuperAdmin = ($admin['id'] == 1);
+    // 判断是否是超级管理员（ID为1）
+    $isSuperAdmin = (isset($admin['id']) && $admin['id'] == 1);
     
     // 查询用户详细信息
     $stmt = $pdo->prepare("
@@ -98,12 +99,13 @@ try {
         jsonResponse(false, null, '用户不存在', 404);
     }
     
-    // 权限控制：普通管理员不能查看其他管理员的详情
+    // 权限控制：只有超级管理员（ID=1）可以查看所有用户信息
+    // 普通管理员不能查看其他管理员的详情
     if (!$isSuperAdmin && in_array($user['user_type'], ['admin', 'siteadmin'])) {
         jsonResponse(false, null, '无权查看管理员信息', 403);
     }
     
-    // 查询用户的授权应用数量
+    // 查询用户的授权应用数量（从 users.openid 表）
     $stmt = $pdo->prepare("
         SELECT COUNT(DISTINCT app_id) as count
         FROM users.openid
@@ -112,6 +114,113 @@ try {
     ");
     $stmt->execute([':uuid' => $userUuid]);
     $authorizedCount = $stmt->fetch(PDO::FETCH_ASSOC)['count'] ?? 0;
+    
+    // 查询用户的第三方绑定详情（从各个平台的表中）
+    $thirdPartyBindings = [];
+    
+    // 1. 查询微信绑定
+    $stmt = $pdo->prepare("
+        SELECT 
+            'wechat' as platform,
+            openid,
+            wechat_nickname as nickname,
+            wechat_avatar as avatar,
+            bind_status as status,
+            created_at as bind_time
+        FROM auth.wechat_user_info
+        WHERE user_uuid = :uuid
+    ");
+    $stmt->execute([':uuid' => $userUuid]);
+    $wechatBindings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $thirdPartyBindings = array_merge($thirdPartyBindings, $wechatBindings);
+    
+    // 2. 查询QQ绑定
+    $stmt = $pdo->prepare("
+        SELECT 
+            'qq' as platform,
+            openid,
+            qq_nickname as nickname,
+            qq_avatar as avatar,
+            bind_status as status,
+            created_at as bind_time
+        FROM auth.qq_user_info
+        WHERE user_uuid = :uuid
+    ");
+    $stmt->execute([':uuid' => $userUuid]);
+    $qqBindings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $thirdPartyBindings = array_merge($thirdPartyBindings, $qqBindings);
+    
+    // 3. 查询微博绑定
+    $stmt = $pdo->prepare("
+        SELECT 
+            'weibo' as platform,
+            uid as openid,
+            weibo_nickname as nickname,
+            weibo_avatar as avatar,
+            bind_status as status,
+            created_at as bind_time
+        FROM auth.weibo_user_info
+        WHERE user_uuid = :uuid
+    ");
+    $stmt->execute([':uuid' => $userUuid]);
+    $weiboBindings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $thirdPartyBindings = array_merge($thirdPartyBindings, $weiboBindings);
+    
+    // 4. 查询Google绑定
+    $stmt = $pdo->prepare("
+        SELECT 
+            'google' as platform,
+            google_id as openid,
+            google_name as nickname,
+            google_avatar as avatar,
+            bind_status as status,
+            created_at as bind_time
+        FROM auth.google_user_info
+        WHERE user_uuid = :uuid
+    ");
+    $stmt->execute([':uuid' => $userUuid]);
+    $googleBindings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $thirdPartyBindings = array_merge($thirdPartyBindings, $googleBindings);
+    
+    // 5. 查询GitHub绑定
+    $stmt = $pdo->prepare("
+        SELECT 
+            'github' as platform,
+            github_id as openid,
+            github_name as nickname,
+            github_avatar as avatar,
+            bind_status as status,
+            created_at as bind_time
+        FROM auth.github_user_info
+        WHERE user_uuid = :uuid
+    ");
+    $stmt->execute([':uuid' => $userUuid]);
+    $githubBindings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $thirdPartyBindings = array_merge($thirdPartyBindings, $githubBindings);
+    
+    // 格式化第三方绑定数据
+    $formattedBindings = [];
+    foreach ($thirdPartyBindings as $binding) {
+        // 平台名称映射
+        $platformNames = [
+            'wechat' => '微信',
+            'qq' => 'QQ',
+            'weibo' => '微博',
+            'google' => 'Google',
+            'github' => 'GitHub'
+        ];
+        
+        $formattedBindings[] = [
+            'platform' => $binding['platform'],
+            'platform_name' => $platformNames[$binding['platform']] ?? $binding['platform'],
+            'openid' => $binding['openid'],
+            'nickname' => $binding['nickname'] ?: '未设置',
+            'avatar' => $binding['avatar'] ?: '',
+            'status' => $binding['status'],
+            'status_text' => $binding['status'] == 1 ? '已绑定' : '已解绑',
+            'bind_time' => $binding['bind_time']
+        ];
+    }
     
     // 构建返回数据（管理员可以看到完整信息）
     // 将gender数字转换为字符串
@@ -141,6 +250,7 @@ try {
         'created_at' => $user['created_at'],
         'updated_at' => $user['updated_at'],
         'authorized_count' => $authorizedCount,
+        'third_party_bindings' => $formattedBindings,
         'permissions' => [
             'can_edit' => $isSuperAdmin || !$isTargetAdmin,
             'can_delete' => !$isUserId1 && ($isSuperAdmin || !$isTargetAdmin),

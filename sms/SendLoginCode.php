@@ -257,8 +257,11 @@ try {
         
         $logger->warning('sms', '触发频率限制', [
             'phone' => $phone,
+            'limit_name' => $rateLimitResult['reason'] ?? '未知限制',
             'type' => $rateLimitResult['type'],
-            'retry_after' => $retryAfter
+            'retry_after' => $retryAfter,
+            'limit' => $rateLimitResult['limit'] ?? null,
+            'current' => $rateLimitResult['current'] ?? null
         ]);
         
         jsonResponse(false, [

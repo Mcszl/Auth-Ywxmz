@@ -73,7 +73,8 @@ try {
     require_once __DIR__ . '/AdminAuthHelper.php';
     $admin = AdminAuthHelper::checkAdminPermission($pdo, 'jsonResponse');
     
-    $isSuperAdmin = ($admin['id'] == 1);
+    // 判断是否是超级管理员（ID为1）
+    $isSuperAdmin = (isset($admin['id']) && $admin['id'] == 1);
     
     // 检查目标用户是否存在
     $stmt = $pdo->prepare("

@@ -335,6 +335,9 @@
                                 <button class="btn-action-small" id="btn-bind-phone" style="display: none;">
                                     <i class="fas fa-link"></i> 绑定
                                 </button>
+                                <button class="btn-action-small" id="btn-change-phone" style="display: none;">
+                                    <i class="fas fa-edit"></i> 修改
+                                </button>
                             </div>
                             <div class="info-item-modern">
                                 <div class="info-icon">
@@ -346,6 +349,9 @@
                                 </div>
                                 <button class="btn-action-small" id="btn-bind-email" style="display: none;">
                                     <i class="fas fa-link"></i> 绑定
+                                </button>
+                                <button class="btn-action-small" id="btn-change-email" style="display: none;">
+                                    <i class="fas fa-edit"></i> 修改
                                 </button>
                             </div>
                         </div>
@@ -587,6 +593,485 @@
 
     <!-- Toast 容器 -->
     <div id="toast-container" class="toast-container"></div>
+
+    <!-- 修改密码弹窗 -->
+    <div id="change-password-modal" class="modal-overlay">
+        <div class="modal-content change-password-modal">
+            <div class="modal-header">
+                <div class="modal-icon info">
+                    <i class="fas fa-key"></i>
+                </div>
+                <h3>修改密码</h3>
+                <button class="modal-close" id="close-change-password-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- 步骤指示器 -->
+                <div class="steps-indicator">
+                    <div class="step active" data-step="1">
+                        <div class="step-number">1</div>
+                        <div class="step-label">选择验证方式</div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="2">
+                        <div class="step-number">2</div>
+                        <div class="step-label">身份验证</div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="3">
+                        <div class="step-number">3</div>
+                        <div class="step-label">设置新密码</div>
+                    </div>
+                </div>
+
+                <!-- 第一步：选择验证方式 -->
+                <div class="password-step" id="password-step-1">
+                    <div class="step-title">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>请选择验证方式</span>
+                    </div>
+                    <div class="verify-methods">
+                        <div class="verify-method" id="verify-method-phone" style="display: none;">
+                            <div class="method-icon">
+                                <i class="fas fa-mobile-alt"></i>
+                            </div>
+                            <div class="method-info">
+                                <div class="method-title">手机号验证</div>
+                                <div class="method-desc" id="verify-phone-display">***</div>
+                            </div>
+                            <div class="method-action">
+                                <button class="btn-select-method" data-method="phone">
+                                    选择
+                                </button>
+                            </div>
+                        </div>
+                        <div class="verify-method" id="verify-method-email" style="display: none;">
+                            <div class="method-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="method-info">
+                                <div class="method-title">邮箱验证</div>
+                                <div class="method-desc" id="verify-email-display">***</div>
+                            </div>
+                            <div class="method-action">
+                                <button class="btn-select-method" data-method="email">
+                                    选择
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step-hint">
+                        <i class="fas fa-info-circle"></i>
+                        <span>为了您的账户安全，修改密码需要进行身份验证</span>
+                    </div>
+                </div>
+
+                <!-- 第二步：身份验证 -->
+                <div class="password-step" id="password-step-2" style="display: none;">
+                    <div class="step-title">
+                        <i class="fas fa-shield-check"></i>
+                        <span>身份验证</span>
+                    </div>
+                    <div class="verify-form">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-mobile-alt" id="verify-icon-phone"></i>
+                                <i class="fas fa-envelope" id="verify-icon-email" style="display: none;"></i>
+                                <span id="verify-target-label">手机号</span>
+                            </label>
+                            <input type="text" class="form-input" id="verify-target" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-shield-alt"></i>
+                                验证码
+                            </label>
+                            <div class="code-input-group">
+                                <input type="text" class="form-input" id="verify-code" placeholder="请输入验证码" maxlength="6">
+                                <button class="btn-send-code" id="btn-send-verify-code">
+                                    <i class="fas fa-paper-plane"></i>
+                                    <span>发送验证码</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step-actions">
+                        <button class="btn-secondary" id="btn-back-step-1">
+                            <i class="fas fa-arrow-left"></i> 上一步
+                        </button>
+                        <button class="btn-primary" id="btn-verify-code">
+                            下一步 <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 第三步：设置新密码 -->
+                <div class="password-step" id="password-step-3" style="display: none;">
+                    <div class="step-title">
+                        <i class="fas fa-lock"></i>
+                        <span>设置新密码</span>
+                    </div>
+                    <div class="password-form">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-key"></i>
+                                新密码
+                            </label>
+                            <div class="password-input-group">
+                                <input type="password" class="form-input" id="new-password" placeholder="请输入新密码（8-20位）" maxlength="20">
+                                <button class="btn-toggle-password" type="button" data-target="new-password">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="password-strength" id="password-strength">
+                                <div class="strength-bar">
+                                    <div class="strength-fill" id="strength-fill"></div>
+                                </div>
+                                <div class="strength-text" id="strength-text">请输入密码</div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-check-circle"></i>
+                                确认密码
+                            </label>
+                            <div class="password-input-group">
+                                <input type="password" class="form-input" id="confirm-password" placeholder="请再次输入新密码" maxlength="20">
+                                <button class="btn-toggle-password" type="button" data-target="confirm-password">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step-actions">
+                        <button class="btn-secondary" id="btn-back-step-2">
+                            <i class="fas fa-arrow-left"></i> 上一步
+                        </button>
+                        <button class="btn-primary" id="btn-submit-password">
+                            <i class="fas fa-check"></i> 提交修改
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改手机号弹窗 -->
+    <div id="change-phone-modal" class="modal-overlay">
+        <div class="modal-content change-password-modal">
+            <div class="modal-header">
+                <div class="modal-icon info">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+                <h3>修改手机号</h3>
+                <button class="modal-close" id="close-change-phone-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- 步骤指示器 -->
+                <div class="steps-indicator">
+                    <div class="step active" data-step="1">
+                        <div class="step-number">1</div>
+                        <div class="step-label">选择验证方式</div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="2">
+                        <div class="step-number">2</div>
+                        <div class="step-label">验证身份</div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="3">
+                        <div class="step-number">3</div>
+                        <div class="step-label">绑定新手机</div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="4">
+                        <div class="step-number">4</div>
+                        <div class="step-label">完成修改</div>
+                    </div>
+                </div>
+
+                <!-- 第一步：选择验证方式 -->
+                <div class="phone-step" id="phone-step-1">
+                    <div class="step-title">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>请选择验证方式</span>
+                    </div>
+                    <div class="verify-methods">
+                        <div class="verify-method" id="phone-verify-method-phone" style="display: none;">
+                            <div class="method-icon">
+                                <i class="fas fa-mobile-alt"></i>
+                            </div>
+                            <div class="method-info">
+                                <div class="method-title">当前手机号验证</div>
+                                <div class="method-desc" id="phone-verify-phone-display">***</div>
+                            </div>
+                            <div class="method-action">
+                                <button class="btn-select-method" data-method="phone">
+                                    选择
+                                </button>
+                            </div>
+                        </div>
+                        <div class="verify-method" id="phone-verify-method-email" style="display: none;">
+                            <div class="method-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="method-info">
+                                <div class="method-title">邮箱验证</div>
+                                <div class="method-desc" id="phone-verify-email-display">***</div>
+                            </div>
+                            <div class="method-action">
+                                <button class="btn-select-method" data-method="email">
+                                    选择
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step-hint">
+                        <i class="fas fa-info-circle"></i>
+                        <span>为了您的账户安全，修改手机号需要先验证身份</span>
+                    </div>
+                </div>
+
+                <!-- 第二步：验证身份 -->
+                <div class="phone-step" id="phone-step-2" style="display: none;">
+                    <div class="step-title">
+                        <i class="fas fa-shield-check"></i>
+                        <span>验证当前身份</span>
+                    </div>
+                    <div class="verify-form">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-mobile-alt" id="phone-verify-icon-phone"></i>
+                                <i class="fas fa-envelope" id="phone-verify-icon-email" style="display: none;"></i>
+                                <span id="phone-verify-target-label">手机号</span>
+                            </label>
+                            <input type="text" class="form-input" id="phone-verify-target" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-shield-alt"></i>
+                                验证码
+                            </label>
+                            <div class="code-input-group">
+                                <input type="text" class="form-input" id="phone-verify-code" placeholder="请输入验证码" maxlength="6">
+                                <button class="btn-send-code" id="btn-send-phone-verify-code">
+                                    <i class="fas fa-paper-plane"></i>
+                                    <span>发送验证码</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step-actions">
+                        <button class="btn-secondary" id="btn-phone-back-step-1">
+                            <i class="fas fa-arrow-left"></i> 上一步
+                        </button>
+                        <button class="btn-primary" id="btn-phone-verify-code">
+                            下一步 <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 第三步：绑定新手机 -->
+                <div class="phone-step" id="phone-step-3" style="display: none;">
+                    <div class="step-title">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>绑定新手机号</span>
+                    </div>
+                    <div class="phone-form">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-mobile-alt"></i>
+                                新手机号
+                            </label>
+                            <input type="text" class="form-input" id="new-phone" placeholder="请输入新手机号" maxlength="11">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-shield-alt"></i>
+                                验证码
+                            </label>
+                            <div class="code-input-group">
+                                <input type="text" class="form-input" id="new-phone-code" placeholder="请输入验证码" maxlength="6">
+                                <button class="btn-send-code" id="btn-send-new-phone-code">
+                                    <i class="fas fa-paper-plane"></i>
+                                    <span>发送验证码</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step-actions">
+                        <button class="btn-secondary" id="btn-phone-back-step-2">
+                            <i class="fas fa-arrow-left"></i> 上一步
+                        </button>
+                        <button class="btn-primary" id="btn-phone-submit">
+                            <i class="fas fa-check"></i> 提交修改
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改邮箱弹窗 -->
+    <div id="change-email-modal" class="modal-overlay">
+        <div class="modal-content change-password-modal">
+            <div class="modal-header">
+                <div class="modal-icon info">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <h3>修改邮箱</h3>
+                <button class="modal-close" id="close-change-email-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- 步骤指示器 -->
+                <div class="steps-indicator">
+                    <div class="step active" data-step="1">
+                        <div class="step-number">1</div>
+                        <div class="step-label">选择验证方式</div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="2">
+                        <div class="step-number">2</div>
+                        <div class="step-label">验证身份</div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="3">
+                        <div class="step-number">3</div>
+                        <div class="step-label">绑定新邮箱</div>
+                    </div>
+                    <div class="step-line"></div>
+                    <div class="step" data-step="4">
+                        <div class="step-number">4</div>
+                        <div class="step-label">完成修改</div>
+                    </div>
+                </div>
+
+                <!-- 第一步：选择验证方式 -->
+                <div class="email-step" id="email-step-1">
+                    <div class="step-title">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>请选择验证方式</span>
+                    </div>
+                    <div class="verify-methods">
+                        <div class="verify-method" id="email-verify-method-phone" style="display: none;">
+                            <div class="method-icon">
+                                <i class="fas fa-mobile-alt"></i>
+                            </div>
+                            <div class="method-info">
+                                <div class="method-title">手机号验证</div>
+                                <div class="method-desc" id="email-verify-phone-display">***</div>
+                            </div>
+                            <div class="method-action">
+                                <button class="btn-select-method" data-method="phone">
+                                    选择
+                                </button>
+                            </div>
+                        </div>
+                        <div class="verify-method" id="email-verify-method-email" style="display: none;">
+                            <div class="method-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="method-info">
+                                <div class="method-title">当前邮箱验证</div>
+                                <div class="method-desc" id="email-verify-email-display">***</div>
+                            </div>
+                            <div class="method-action">
+                                <button class="btn-select-method" data-method="email">
+                                    选择
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step-hint">
+                        <i class="fas fa-info-circle"></i>
+                        <span>为了您的账户安全，修改邮箱需要先验证身份</span>
+                    </div>
+                </div>
+
+                <!-- 第二步：验证身份 -->
+                <div class="email-step" id="email-step-2" style="display: none;">
+                    <div class="step-title">
+                        <i class="fas fa-shield-check"></i>
+                        <span>验证当前身份</span>
+                    </div>
+                    <div class="verify-form">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-mobile-alt" id="email-verify-icon-phone"></i>
+                                <i class="fas fa-envelope" id="email-verify-icon-email" style="display: none;"></i>
+                                <span id="email-verify-target-label">手机号</span>
+                            </label>
+                            <input type="text" class="form-input" id="email-verify-target" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-shield-alt"></i>
+                                验证码
+                            </label>
+                            <div class="code-input-group">
+                                <input type="text" class="form-input" id="email-verify-code" placeholder="请输入验证码" maxlength="6">
+                                <button class="btn-send-code" id="btn-send-email-verify-code">
+                                    <i class="fas fa-paper-plane"></i>
+                                    <span>发送验证码</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step-actions">
+                        <button class="btn-secondary" id="btn-email-back-step-1">
+                            <i class="fas fa-arrow-left"></i> 上一步
+                        </button>
+                        <button class="btn-primary" id="btn-email-verify-code">
+                            下一步 <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 第三步：绑定新邮箱 -->
+                <div class="email-step" id="email-step-3" style="display: none;">
+                    <div class="step-title">
+                        <i class="fas fa-envelope"></i>
+                        <span>绑定新邮箱</span>
+                    </div>
+                    <div class="email-form">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-envelope"></i>
+                                新邮箱地址
+                            </label>
+                            <input type="email" class="form-input" id="new-email" placeholder="请输入新邮箱地址">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-shield-alt"></i>
+                                验证码
+                            </label>
+                            <div class="code-input-group">
+                                <input type="text" class="form-input" id="new-email-code" placeholder="请输入验证码" maxlength="6">
+                                <button class="btn-send-code" id="btn-send-new-email-code">
+                                    <i class="fas fa-paper-plane"></i>
+                                    <span>发送验证码</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="step-actions">
+                        <button class="btn-secondary" id="btn-email-back-step-2">
+                            <i class="fas fa-arrow-left"></i> 上一步
+                        </button>
+                        <button class="btn-primary" id="btn-email-submit">
+                            <i class="fas fa-check"></i> 提交修改
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- 自定义弹出框 -->
     <div id="modal-overlay" class="modal-overlay">
